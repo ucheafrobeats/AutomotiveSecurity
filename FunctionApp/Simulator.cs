@@ -92,14 +92,12 @@ namespace AutomotiveWorld
                     input: null);
                 int vehiclesCount = vehicles.Count;
 
-                if (vehiclesCount < 2)
+                if (vehiclesCount < 10)
                 {
                     await context.CallActivityAsync<int>(
                     functionName: nameof(ActivityRegisterVehicles),
                     input: vehiclesCount);
                 }
-
-
 
                 Logger.LogInformation($"{nameof(Orchestrator)} finished successfully");
             }
@@ -115,7 +113,7 @@ namespace AutomotiveWorld
             [ActivityTrigger] int vehiclesCount,
             [DurableClient] IDurableEntityClient client)
         {
-            for (int i = vehiclesCount; i < 1; i++)
+            for (int i = vehiclesCount; i == 0; i++)
             {
                 Vin vin = await VinGenerator.Next(2018, DateTime.Now.Year);
                 VehicleDto vehicleDto = VehicleFactory.Create(vin);

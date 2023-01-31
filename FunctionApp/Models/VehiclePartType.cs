@@ -4,7 +4,7 @@
     {
         Frame,
         Engine,
-        Door,
+        Doors,
         Multimedia,
         Battery,
         Tires

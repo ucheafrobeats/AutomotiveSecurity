@@ -1,6 +1,8 @@
 ﻿using AutomotiveWorld.Entities;
 using AutomotiveWorld.Models;
+using AutomotiveWorld.Models.Parts;
 using System;
+using System.Collections.Generic;
 
 namespace AutomotiveWorld.Builders
 {
@@ -11,8 +13,11 @@ namespace AutomotiveWorld.Builders
 
         public VehicleDto VehicleDto { get; private set; }
 
+        public Vin Vin { get; private set; }
+
         public VehicleBuilder(Vin vin)
         {
+            Vin = vin;
             VehicleDto = new VehicleDto()
             {
                 Vin = vin.Value,
@@ -32,10 +37,37 @@ namespace AutomotiveWorld.Builders
 
         public abstract void BuildFrame();
 
-        public abstract void BuildEngine();
+        public virtual void BuildEngine()
+        {
+            if (Convert.ToBoolean(Vin.DisplacementL))
+            {
+                Engine engine = new()
+                {
+                    Displacement = Vin.DisplacementL,
+                    Type = Vin.TryGetValue("Fuel Type - Primary", out string fuelTypePrimary) ? EngineTypeFactory.FromString(fuelTypePrimary) : EngineType.Unknown,
+                    Cylinders = Vin.TryGetValue("Engine Number of Cylinders", out string numberOfCylinders) ? Convert.ToInt32(numberOfCylinders) : 0,
+                };
+
+                VehicleDto[VehiclePartType.Engine] = engine;
+            }
+        }
 
         public abstract void BuildTires();
 
-        public abstract void BuildDoors();
+        public virtual void BuildDoors()
+        {
+            if (Vin.TryGetValue("Doors", out string value))
+            {
+                int numberOfDoors = Convert.ToInt32(value);
+
+                List<Door> doors = new List<Door>(numberOfDoors);
+                for (int i = 0; i < numberOfDoors; i++)
+                {
+                    doors.Add(new Door());
+                }
+
+                VehicleDto.Parts[VehiclePartType.Doors] = doors;
+            }
+        }
     }
 }

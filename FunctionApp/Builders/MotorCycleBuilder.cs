@@ -21,18 +21,18 @@ namespace AutomotiveWorld.Builders
             VehicleDto[VehiclePartType.Frame] = new Frame();
         }
 
-        public override void BuildEngine()
-        {
-            Random r = new();
+        //public override void BuildEngine()
+        //{
+        //    Random r = new();
 
-            Engine engine = new()
-            {
-                Displacement = r.Next(1, 30) * 50,
-                Type = EngineType.ESS
-            };
+        //    Engine engine = new()
+        //    {
+        //        Displacement = r.Next(1, 30) * 50,
+        //        Type = EngineType.ESS
+        //    };
 
-            VehicleDto[VehiclePartType.Engine] = engine;
-        }
+        //    VehicleDto[VehiclePartType.Engine] = engine;
+        //}
 
         public override void BuildTires()
         {
@@ -53,7 +53,7 @@ namespace AutomotiveWorld.Builders
 
         public override void BuildDoors()
         {
-            VehicleDto[VehiclePartType.Door] = null; // "0";
+            VehicleDto[VehiclePartType.Doors] = null;
         }
     }
 }

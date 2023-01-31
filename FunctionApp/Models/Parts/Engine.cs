@@ -11,5 +11,8 @@ namespace AutomotiveWorld.Models.Parts
         [JsonProperty("type", Required = Required.Always)]
         [JsonConverter(typeof(StringEnumConverter))]
         public EngineType Type { get; set; }
+
+        [JsonProperty("cylinders")]
+        public int Cylinders { get; set; }
     }
 }

@@ -36,9 +36,9 @@ namespace AutomotiveWorld
         public async Task<IActionResult> GenerateData(
             [HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)] HttpRequest req, ILogger log)
         {
-            AzureLogAnalyticsClient azureLogAnalyticsClient = new AzureLogAnalyticsClient(
-                Environment.GetEnvironmentVariable("LOG_ANALYTICS_WORKSPACE_ID", EnvironmentVariableTarget.Process),
-                Environment.GetEnvironmentVariable("LOG_ANALYTICS_WORKSPACE_PRIMARY_KEY", EnvironmentVariableTarget.Process));
+            //AzureLogAnalyticsClient azureLogAnalyticsClient = new AzureLogAnalyticsClient(
+            //    Environment.GetEnvironmentVariable("LOG_ANALYTICS_WORKSPACE_ID", EnvironmentVariableTarget.Process),
+            //    Environment.GetEnvironmentVariable("LOG_ANALYTICS_WORKSPACE_PRIMARY_KEY", EnvironmentVariableTarget.Process));
 
             // Construct and display vehicles
             //ScooterBuilder scooterBuilder = new();

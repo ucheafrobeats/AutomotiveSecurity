@@ -1,7 +1,6 @@
 ﻿using AutomotiveWorld.Models;
 using AutomotiveWorld.Models.Parts;
 using System;
-using System.Reflection;
 
 namespace AutomotiveWorld.Builders
 {
@@ -24,18 +23,18 @@ namespace AutomotiveWorld.Builders
             VehicleDto[VehiclePartType.Frame] = new Frame();
         }
 
-        public override void BuildEngine()
-        {
-            Random r = new();
+        //public override void BuildEngine()
+        //{
+        //    Random r = new();
 
-            Engine engine = new()
-            {
-                Displacement = r.Next(10, 30) * 100,
-                Type = EngineType.DSL
-            };
+        //    Engine engine = new()
+        //    {
+        //        Displacement = r.Next(10, 30) * 100,
+        //        Type = EngineType.DSL
+        //    };
 
-            VehicleDto[VehiclePartType.Engine] = engine;
-        }
+        //    VehicleDto[VehiclePartType.Engine] = engine;
+        //}
 
         public override void BuildTires()
         {
@@ -66,11 +65,6 @@ namespace AutomotiveWorld.Builders
             }
 
             VehicleDto[VehiclePartType.Tires] = tires;
-        }
-
-        public override void BuildDoors()
-        {
-            VehicleDto[VehiclePartType.Door] = null; // "4";
         }
     }
 }

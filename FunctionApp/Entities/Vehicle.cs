@@ -1,5 +1,6 @@
 ﻿using AutomotiveWorld.Models;
 using AutomotiveWorld.Models.Parts;
+using AutomotiveWorld.Network;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Extensions;
@@ -17,6 +18,9 @@ namespace AutomotiveWorld.Entities
     {
         [JsonIgnore]
         protected ILogger Logger { get; }
+
+        [JsonIgnore]
+        protected AzureLogAnalyticsClient AzureLogAnalyticsClient;
 
         [JsonIgnore]
         private static Random Rand = new();
@@ -64,9 +68,10 @@ namespace AutomotiveWorld.Entities
         [JsonProperty("nextTripTime")]
         public DateTime NextTripTime { get; set; }
 
-        public Vehicle(ILogger<Vehicle> logger)
+        public Vehicle(ILogger<Vehicle> logger, AzureLogAnalyticsClient azureLogAnalyticsClient)
         {
             Logger = logger;
+            AzureLogAnalyticsClient = azureLogAnalyticsClient;
         }
 
         public object this[VehiclePartType key]
@@ -109,7 +114,7 @@ namespace AutomotiveWorld.Entities
             try
             {
                 CurrentTripTime = NextTripTime;
-                NextTripTime = CurrentTripTime.AddMinutes(2);
+                NextTripTime = CurrentTripTime.AddSeconds(30);
 
                 Logger.LogInformation($"Scheduled next trip, key=[{Entity.Current.EntityKey}], datetime=[{NextTripTime}]");
                 Entity.Current.SignalEntity<IVehicle>(Entity.Current.EntityKey, NextTripTime, proxy => proxy.Trip());
@@ -128,6 +133,8 @@ namespace AutomotiveWorld.Entities
             try
             {
                 Kilometer += 1;
+
+                await SendTelemetry();
             }
             catch (Exception ex)
             {
@@ -137,6 +144,19 @@ namespace AutomotiveWorld.Entities
             {
                 await ScheduleNextTrip();
             }
+        }
+
+        private async Task SendTelemetry()
+        {
+            VehicleTelemetry vehicleTelemetry = new()
+            {
+                Vin = Vin,
+                VehicleJsonAsString = JsonConvert.SerializeObject(this),
+                Type = nameof(VehicleTelemetry)
+            };
+
+            string telemetry = JsonConvert.SerializeObject(vehicleTelemetry);
+            await AzureLogAnalyticsClient.Post("demoURLMonitorY", telemetry);
         }
 
         //public override string ToString()
@@ -155,7 +175,8 @@ namespace AutomotiveWorld.Entities
         //}
 
         [FunctionName(nameof(Vehicle))]
-        public static Task Run([EntityTrigger] IDurableEntityContext ctx)
+        public static Task Run(
+            [EntityTrigger] IDurableEntityContext ctx)
         {
             return ctx.DispatchAsync<Vehicle>();
         }

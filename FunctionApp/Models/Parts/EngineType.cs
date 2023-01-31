@@ -1,7 +1,11 @@
-﻿namespace AutomotiveWorld.Models.Parts
+﻿using System;
+
+namespace AutomotiveWorld.Models.Parts
 {
     public enum EngineType
     {
+        Unknown,
+
         /** InternalPetrolCombustionEngine
          * - low particulate emissions
          * - significant reduction in emissions for the Euro6 standard

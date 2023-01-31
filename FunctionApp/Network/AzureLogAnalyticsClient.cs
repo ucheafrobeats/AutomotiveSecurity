@@ -24,7 +24,7 @@ namespace AutomotiveWorld.Network
 
         public string ApiVersion { get; set; }
 
-        public AzureLogAnalyticsClient(string workspaceId, string sharedKey, string apiVersion = "2016-04-01", HttpClient httpClient)
+        public AzureLogAnalyticsClient(string workspaceId, string sharedKey, HttpClient httpClient, string apiVersion = "2016-04-01")
         {
             WorkspaceId = workspaceId;
             SharedKey = sharedKey;

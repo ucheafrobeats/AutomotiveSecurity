@@ -26,21 +26,21 @@ namespace AutomotiveWorld.Models
             Value = vin;
         }
 
-        public int ModelYear { get { return _nhtsaMap.TryGetValue("Model Year", out string value) ? Convert.ToInt32(value) : 0; } }
+        public int ModelYear { get { return TryGetValue("Model Year", out string value) ? Convert.ToInt32(value) : 0; } }
 
-        public string Model { get { return _nhtsaMap.TryGetValue("Model", out string value) ? value : null; } }
+        public string Model { get { return TryGetValue("Model", out string value) ? Normalize(value) : null; } }
 
-        public string Make { get { return _nhtsaMap.TryGetValue("Make", out string value) ? value : null; } }
+        public string Make { get { return TryGetValue("Make", out string value) ? Normalize(value) : null; } }
 
-        public string ManufacturerName { get { return _nhtsaMap.TryGetValue("Manufacturer Name", out string value) ? Normalize(value) : null; } }
+        public string ManufacturerName { get { return TryGetValue("Manufacturer Name", out string value) ? Normalize(value) : null; } }
 
-        public string VehicleType { get { return _nhtsaMap.TryGetValue("Vehicle Type", out string value) ? Normalize(value) : null; } }
+        public string VehicleType { get { return TryGetValue("Vehicle Type", out string value) ? Normalize(value) : null; } }
 
-        public string Trim { get { return _nhtsaMap.TryGetValue("Trim", out string value) ? value : null; } }
+        public string Trim { get { return TryGetValue("Trim", out string value) ? value : null; } }
 
-        public string BodyClass { get { return _nhtsaMap.TryGetValue("Body Class", out string value) ? value : null; } }
+        public string BodyClass { get { return TryGetValue("Body Class", out string value) ? value : null; } }
 
-        public float DisplacementL { get { return _nhtsaMap.TryGetValue("Displacement (L)", out string value) ? (float)Convert.ToDouble(value) : 0; } }
+        public float DisplacementL { get { return TryGetValue("Displacement (L)", out string value) ? (float)Convert.ToDouble(value) : 0; } }
 
         public string SerialNumber { get { return Value[11..]; } }
 
@@ -57,6 +57,11 @@ namespace AutomotiveWorld.Models
             value = value.ToLower();
             TextInfo info = CultureInfo.CurrentCulture.TextInfo;
             return info.ToTitleCase(value).Replace(" ", string.Empty);
+        }
+
+        public bool TryGetValue(string key, out string value)
+        {
+            return _nhtsaMap.TryGetValue(key, out value);
         }
 
         public override string ToString()
