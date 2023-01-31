@@ -1,14 +1,33 @@
-﻿using AutomotiveWorld.Models;
+﻿using AutomotiveWorld.Entities;
+using AutomotiveWorld.Models;
+using System;
 
 namespace AutomotiveWorld.Builders
 {
     public abstract class VehicleBuilder
     {
-        public Vehicle Vehicle { get; private set; }
+        private static Random Rand = new();
+        private static readonly Color[] Colors = (Color[])Enum.GetValues(typeof(Color));
 
-        public VehicleBuilder(VehicleType vehicleType, string vin)
+        public VehicleDto VehicleDto { get; private set; }
+
+        public VehicleBuilder(Vin vin)
         {
-            Vehicle = new Vehicle(vehicleType, vin);
+            VehicleDto = new VehicleDto()
+            {
+                Vin = vin.Value,
+                Make = vin.Make,
+                Model = vin.Model,
+                SerialNumber = vin.SerialNumber,
+                Style = vin.BodyClass,
+                TrimLevel = vin.Trim,
+                Year = vin.ModelYear,
+            };
+        }
+
+        public void Paint()
+        {
+            VehicleDto.Color = Colors[Rand.Next(Colors.Length)];
         }
 
         public abstract void BuildFrame();

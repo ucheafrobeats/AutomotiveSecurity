@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace AutomotiveWorld.Models.Parts
 {
-    public abstract class Part
+    public class Part
     {
     }
 }

@@ -5,7 +5,7 @@ using System.Reflection;
 
 namespace AutomotiveWorld.Builders
 {
-    class CarBuilder : VehicleBuilder
+    class TruckBuilder : VehicleBuilder
     {
         private static readonly TireSideType[] _tireSideTypes = {
             TireSideType.LeftFront,
@@ -14,7 +14,7 @@ namespace AutomotiveWorld.Builders
             TireSideType.RightRear
         };
 
-        public CarBuilder(Vin vin)
+        public TruckBuilder(Vin vin)
             : base(vin)
         {
         }
@@ -31,7 +31,7 @@ namespace AutomotiveWorld.Builders
             Engine engine = new()
             {
                 Displacement = r.Next(10, 30) * 100,
-                Type = EngineType.ESS
+                Type = EngineType.DSL
             };
 
             VehicleDto[VehiclePartType.Engine] = engine;
@@ -70,7 +70,7 @@ namespace AutomotiveWorld.Builders
 
         public override void BuildDoors()
         {
-            VehicleDto[VehiclePartType.Door] = "4";
+            VehicleDto[VehiclePartType.Door] = null; // "4";
         }
     }
 }

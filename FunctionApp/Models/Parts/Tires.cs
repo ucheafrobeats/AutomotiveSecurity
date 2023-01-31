@@ -7,8 +7,8 @@ namespace AutomotiveWorld.Models.Parts
         [JsonProperty("front", NullValueHandling = NullValueHandling.Ignore)]
         public Tire Front { get; set; }
 
-        [JsonProperty("back", NullValueHandling = NullValueHandling.Ignore)]
-        public Tire Back { get; set; }
+        [JsonProperty("rear", NullValueHandling = NullValueHandling.Ignore)]
+        public Tire Rear { get; set; }
 
         [JsonProperty("leftFront", NullValueHandling = NullValueHandling.Ignore)]
         public Tire LeftFront { get; set; }

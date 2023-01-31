@@ -11,14 +11,14 @@ namespace AutomotiveWorld.Builders
             TireSideType.Rear
         };
 
-        public MotorCycleBuilder(string vin)
-            : base(VehicleType.MotorCycle, vin)
+        public MotorCycleBuilder(Vin vin)
+            : base(vin)
         {
         }
 
         public override void BuildFrame()
         {
-            Vehicle[VehiclePartType.Frame] = new Frame();
+            VehicleDto[VehiclePartType.Frame] = new Frame();
         }
 
         public override void BuildEngine()
@@ -31,7 +31,7 @@ namespace AutomotiveWorld.Builders
                 Type = EngineType.ESS
             };
 
-            Vehicle[VehiclePartType.Engine] = engine;
+            VehicleDto[VehiclePartType.Engine] = engine;
         }
 
         public override void BuildTires()
@@ -53,7 +53,7 @@ namespace AutomotiveWorld.Builders
 
         public override void BuildDoors()
         {
-            Vehicle[VehiclePartType.Door] = null; // "0";
+            VehicleDto[VehiclePartType.Door] = null; // "0";
         }
     }
 }

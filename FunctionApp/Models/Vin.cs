@@ -1,44 +1,67 @@
-﻿using Newtonsoft.Json;
+﻿using AutomotiveWorld.Models.Parts;
+using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Extensions;
+using Newtonsoft.Json;
+using System;
+using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
-using System.Xml.Linq;
 
 namespace AutomotiveWorld.Models
 {
     public class Vin
     {
-        [JsonProperty("value", Required = Required.Always)]
-        public char[] Value { get; private set; } = new char[16];
+        /** Using https://vpic.nhtsa.dot.gov/api/ results map
+        ** Referense: https://vpic.nhtsa.dot.gov/api/vehicles/decodevin/4S3BMHB68B3286050?format=json
+        **/
 
-        public Vin(string value)
+        private readonly IDictionary<string, string> _nhtsaMap;
+
+        [JsonProperty("value", Required = Required.Always)]
+        public string Value { get; private set; }
+
+
+        public Vin(string vin, IDictionary<string, string> nhtsaMap)
         {
-            Value = value.ToCharArray();
+            _nhtsaMap = nhtsaMap;
+            Value = vin;
         }
 
-        public char CountryOfManufacture { get { return Value[0]; } }
+        public int ModelYear { get { return _nhtsaMap.TryGetValue("Model Year", out string value) ? Convert.ToInt32(value) : 0; } }
 
-        public char VehicleManufacture { get { return Value[1]; } }
+        public string Model { get { return _nhtsaMap.TryGetValue("Model", out string value) ? value : null; } }
 
-        public char VehicleType { get { return Value[2]; } }
+        public string Make { get { return _nhtsaMap.TryGetValue("Make", out string value) ? value : null; } }
 
-        /// <summary>
-        ///     Vehicle's brand, body style, model, series, etc
-        /// </summary>
-        public string VehicleInformation { get { return string.Join("", Value.Skip(3).Take(5)); } }
+        public string ManufacturerName { get { return _nhtsaMap.TryGetValue("Manufacturer Name", out string value) ? Normalize(value) : null; } }
 
-        public char SecurityCheckNumber { get { return Value[8]; } }
+        public string VehicleType { get { return _nhtsaMap.TryGetValue("Vehicle Type", out string value) ? Normalize(value) : null; } }
 
-        public char ModelYear { get { return Value[9]; } }
+        public string Trim { get { return _nhtsaMap.TryGetValue("Trim", out string value) ? value : null; } }
 
-        public char AssemblyPlant { get { return Value[10]; } }
+        public string BodyClass { get { return _nhtsaMap.TryGetValue("Body Class", out string value) ? value : null; } }
 
-        /// <summary>
-        ///     Vehicle's serial number
-        /// </summary>
-        public string SerialNumber { get { return string.Join("", Value.Skip(11).Take(6)); } }
+        public float DisplacementL { get { return _nhtsaMap.TryGetValue("Displacement (L)", out string value) ? (float)Convert.ToDouble(value) : 0; } }
+
+        public string SerialNumber { get { return Value[11..]; } }
+
+        public bool IsValid()
+        {
+            return ModelYear != 0 &&
+                !string.IsNullOrWhiteSpace(Make) &&
+                !string.IsNullOrWhiteSpace(VehicleType) &&
+                DisplacementL != 0;
+        }
+
+        private static string Normalize(string value)
+        {
+            value = value.ToLower();
+            TextInfo info = CultureInfo.CurrentCulture.TextInfo;
+            return info.ToTitleCase(value).Replace(" ", string.Empty);
+        }
 
         public override string ToString()
         {
-            return new string(Value);
+            return Value;
         }
     }
 }
