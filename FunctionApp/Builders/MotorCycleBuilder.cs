@@ -6,7 +6,11 @@ namespace AutomotiveWorld.Builders
 {
     class MotorCycleBuilder : VehicleBuilder
     {
-        private static readonly TireSideType[] _tireSideTypes = {
+        private const int PsiMinValue = 28;
+
+        private const int PsiMaxValue = 40;
+
+        private static readonly TireSideType[] TireSideTypes = {
             TireSideType.Front,
             TireSideType.Rear
         };
@@ -16,44 +20,9 @@ namespace AutomotiveWorld.Builders
         {
         }
 
-        public override void BuildFrame()
-        {
-            VehicleDto[VehiclePartType.Frame] = new Frame();
-        }
-
-        //public override void BuildEngine()
-        //{
-        //    Random r = new();
-
-        //    Engine engine = new()
-        //    {
-        //        Displacement = r.Next(1, 30) * 50,
-        //        Type = EngineType.ESS
-        //    };
-
-        //    VehicleDto[VehiclePartType.Engine] = engine;
-        //}
-
         public override void BuildTires()
         {
-            Tires tires = new();
-
-            foreach (TireSideType tireSideType in _tireSideTypes)
-            {
-                Random r = new();
-                Tire tire = new()
-                {
-                    Pressure = r.Next(28, 40),
-                    Year = r.Next(DateTime.Now.Year - 2, DateTime.Now.Year)
-                };
-
-                typeof(Tires).GetProperty($"{tireSideType}").SetValue(tires, tire);
-            }
-        }
-
-        public override void BuildDoors()
-        {
-            VehicleDto[VehiclePartType.Doors] = null;
+            base.BuildTires(TireSideTypes, PsiMinValue, PsiMaxValue);
         }
     }
 }

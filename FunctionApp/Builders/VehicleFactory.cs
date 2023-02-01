@@ -30,12 +30,7 @@ namespace AutomotiveWorld.Builders
                     break;
             }
 
-            vehicleBuilder.BuildFrame();
-            vehicleBuilder.BuildEngine();
-            vehicleBuilder.BuildTires();
-            vehicleBuilder.BuildDoors();
-
-            vehicleBuilder.Paint();
+            vehicleBuilder.Build();
 
             return vehicleBuilder.VehicleDto;
         }

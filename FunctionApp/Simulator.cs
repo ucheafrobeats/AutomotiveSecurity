@@ -28,6 +28,10 @@ namespace AutomotiveWorld
     {
         public const string TimerScheduleExpression = "%SimulatorScheduleExpression%";
 
+        private const int MaxVehicles = 10;
+
+        private const int VehicleMinYear = 2018;
+
         private readonly ILogger<Simulator> Logger;
 
         private readonly AzureLogAnalyticsClient AzureLogAnalyticsClient;
@@ -92,7 +96,7 @@ namespace AutomotiveWorld
                     input: null);
                 int vehiclesCount = vehicles.Count;
 
-                if (vehiclesCount < 10)
+                if (vehiclesCount < MaxVehicles)
                 {
                     await context.CallActivityAsync<int>(
                     functionName: nameof(ActivityRegisterVehicles),
@@ -113,9 +117,9 @@ namespace AutomotiveWorld
             [ActivityTrigger] int vehiclesCount,
             [DurableClient] IDurableEntityClient client)
         {
-            for (int i = vehiclesCount; i == 0; i++)
+            for (int i = vehiclesCount; i < MaxVehicles; i++)
             {
-                Vin vin = await VinGenerator.Next(2018, DateTime.Now.Year);
+                Vin vin = await VinGenerator.Next(VehicleMinYear, DateTime.Now.Year);
                 VehicleDto vehicleDto = VehicleFactory.Create(vin);
 
                 await client.SignalEntityAsync<IVehicle>(vin.Value, proxy => proxy.Create(vehicleDto));
@@ -193,7 +197,6 @@ namespace AutomotiveWorld
             log.LogInformation("C# HTTP trigger function processed a request.");
 
             string name = req.Query["name"];
-
 
             string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
             dynamic data = JsonConvert.DeserializeObject(requestBody);
