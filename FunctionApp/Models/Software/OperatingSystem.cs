@@ -14,6 +14,6 @@ namespace AutomotiveWorld.Models.Software
         public OperatingSystemPlatform Platform { get; set; }
 
         [JsonProperty("version", Required = Required.Always)]
-        public string Version { get; set; }
+        public double Version { get; set; }
     }
 }

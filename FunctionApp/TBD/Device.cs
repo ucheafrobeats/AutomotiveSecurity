@@ -14,9 +14,9 @@
 #pragma warning disable 3016 // Disable "CS3016 Arrays as attribute arguments is not CLS-compliant"
 #pragma warning disable 8603 // Disable "CS8603 Possible null reference return"
 
-namespace Microsoft.IoTSecurity.Devices
+namespace AutomotiveWorld.TBD
 {
-    using System = global::System;
+    using System = System;
 
     [System.CodeDom.Compiler.GeneratedCode("NSwag", "13.18.0.0 (NJsonSchema v10.8.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class Device
@@ -284,8 +284,8 @@ namespace Microsoft.IoTSecurity.Devices
         {
             public ObjectResponseResult(T responseObject, string responseText)
             {
-                this.Object = responseObject;
-                this.Text = responseText;
+                Object = responseObject;
+                Text = responseText;
             }
 
             public T Object { get; }
@@ -299,7 +299,7 @@ namespace Microsoft.IoTSecurity.Devices
         {
             if (response == null || response.Content == null)
             {
-                return new ObjectResponseResult<T>(default(T), string.Empty);
+                return new ObjectResponseResult<T>(default, string.Empty);
             }
 
             if (ReadResponseAsString)
@@ -2091,7 +2091,7 @@ namespace Microsoft.IoTSecurity.Devices
         public System.Collections.Generic.IReadOnlyDictionary<string, System.Collections.Generic.IEnumerable<string>> Headers { get; private set; }
 
         public ApiException(string message, int statusCode, string response, System.Collections.Generic.IReadOnlyDictionary<string, System.Collections.Generic.IEnumerable<string>> headers, System.Exception innerException)
-            : base(message + "\n\nStatus: " + statusCode + "\nResponse: \n" + ((response == null) ? "(null)" : response.Substring(0, response.Length >= 512 ? 512 : response.Length)), innerException)
+            : base(message + "\n\nStatus: " + statusCode + "\nResponse: \n" + (response == null ? "(null)" : response.Substring(0, response.Length >= 512 ? 512 : response.Length)), innerException)
         {
             StatusCode = statusCode;
             Response = response;

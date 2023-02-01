@@ -1,5 +1,6 @@
 ﻿using AutomotiveWorld.Models;
 using AutomotiveWorld.Models.Parts;
+using AutomotiveWorld.Models.Software;
 
 namespace AutomotiveWorld.Builders
 {
@@ -21,6 +22,13 @@ namespace AutomotiveWorld.Builders
         public CarBuilder(Vin vin)
             : base(vin)
         {
+        }
+
+        public override void Build()
+        {
+            base.Build();
+
+            VehicleDto[VehiclePartType.Multimedia] = MultimediaGenerator.GenerateMultimedia();
         }
 
         public override void BuildTires()

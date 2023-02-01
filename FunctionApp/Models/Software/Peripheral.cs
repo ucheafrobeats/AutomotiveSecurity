@@ -6,5 +6,8 @@ namespace AutomotiveWorld.Models.Software
     {
         [JsonProperty("name", Required = Required.Always)]
         public string Name { get; set; }
+
+        [JsonProperty("inUse")]
+        public bool InUse { get; set; }
     }
 }

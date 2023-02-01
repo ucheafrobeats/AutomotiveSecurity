@@ -25,6 +25,13 @@ namespace AutomotiveWorld.Builders
         {
         }
 
+        public override void Build()
+        {
+            base.Build();
+
+            VehicleDto[VehiclePartType.Multimedia] = MultimediaGenerator.GenerateMultimedia();
+        }
+
         public override void BuildTires()
         {
             base.BuildTires(TireSideTypes, PsiMinValue, PsiMaxValue, SpareTires);

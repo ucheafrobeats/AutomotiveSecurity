@@ -10,7 +10,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 
-namespace AutomotiveWorld
+namespace AutomotiveWorld.Builders
 {
     public class VinGenerator
     {
@@ -225,7 +225,7 @@ namespace AutomotiveWorld
 
         private static int VinCharacterToNumber(char vinChar)
         {
-            if (vinChar >= '0' && vinChar <= '9') return (int)vinChar - 48;
+            if (vinChar >= '0' && vinChar <= '9') return vinChar - 48;
             if (vinChar >= 'S' && vinChar <= 'Z') return (AllCharacters.IndexOf(vinChar) + 1) % 9 + 1;
             return AllCharacters.IndexOf(vinChar) % 9 + 1;
         }

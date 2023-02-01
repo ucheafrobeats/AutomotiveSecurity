@@ -35,7 +35,7 @@ namespace AutomotiveWorld.Builders
             };
         }
 
-        public void Build()
+        public virtual void Build()
         {
             BuildFrame();
             BuildEngine();

@@ -8,6 +8,6 @@ namespace AutomotiveWorld.Models.Software
         public string Vendor { get; set; }
 
         [JsonProperty("version", Required = Required.Always)]
-        public string Version { get; set; }
+        public double Version { get; set; }
     }
 }

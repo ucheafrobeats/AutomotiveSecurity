@@ -11,10 +11,19 @@ using System.Runtime.Loader;
 using System.Threading.Tasks;
 
 
-namespace AutomotiveWorld
+namespace AutomotiveWorld.TBD
 {
     internal class CodeGenerator
     {
+        public static async Task Generate()
+        {
+            string url = "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/main/specification/iotsecurity/resource-manager/Microsoft.IoTSecurity/preview/2021-02-01-preview/devices.json";
+
+            //Device device = new Device();
+            CodeGenerator codeGenerator = new CodeGenerator();
+            Assembly x = await codeGenerator.AssemblyFromUrlAsync(url);
+        }
+
         private static Assembly GenerateAssembly(string code)
         {
             Assembly asm = null;

@@ -8,7 +8,7 @@ namespace AutomotiveWorld.Models.Software
         public string Name { get; set; }
 
         [JsonProperty("version", Required = Required.Always)]
-        public string Version { get; set; }
+        public double Version { get; set; }
 
         [JsonProperty("enabled")]
         public bool Enabled { get; set; } = true;
