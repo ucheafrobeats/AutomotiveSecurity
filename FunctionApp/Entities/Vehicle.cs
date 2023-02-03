@@ -14,17 +14,8 @@ using System.Threading.Tasks;
 namespace AutomotiveWorld.Entities
 {
     [JsonObject(MemberSerialization.OptIn)]
-    public class Vehicle : IVehicle
+    public class Vehicle : EntityBase, IVehicle
     {
-        [JsonIgnore]
-        protected ILogger Logger { get; }
-
-        [JsonIgnore]
-        protected AzureLogAnalyticsClient AzureLogAnalyticsClient;
-
-        [JsonIgnore]
-        private static Random Rand = new();
-
         [JsonProperty("parts")]
         public Dictionary<VehiclePartType, object> Parts = new();
 
@@ -62,16 +53,15 @@ namespace AutomotiveWorld.Entities
         [JsonProperty("year", Required = Required.Always)]
         public int Year { get; set; }
 
-        [JsonProperty("currentTripTime")]
-        public DateTime CurrentTripTime { get; set; }
+        [JsonProperty("isAvailable")]
+        public bool isAvailable { get; set; } = true;
 
-        [JsonProperty("nextTripTime")]
-        public DateTime NextTripTime { get; set; }
-
-        public Vehicle(ILogger<Vehicle> logger, AzureLogAnalyticsClient azureLogAnalyticsClient)
+        public Vehicle(
+            ILogger<Vehicle> logger,
+            AzureLogAnalyticsClient azureLogAnalyticsClient) : base(
+                logger,
+                azureLogAnalyticsClient)
         {
-            Logger = logger;
-            AzureLogAnalyticsClient = azureLogAnalyticsClient;
         }
 
         public object this[VehiclePartType key]
@@ -95,38 +85,10 @@ namespace AutomotiveWorld.Entities
             Vin = vehicleDto.Vin;
             Year = vehicleDto.Year;
 
-            NextTripTime = DateTime.UtcNow.AddSeconds(10);
-
-            Entity.Current.SignalEntity<IVehicle>(Vin, NextTripTime, e => e.Trip());
-
             return Task.CompletedTask;
         }
 
-        public Task Delete()
-        {
-            Entity.Current.DeleteState();
 
-            return Task.CompletedTask;
-        }
-
-        public async Task ScheduleNextTrip()
-        {
-            try
-            {
-                CurrentTripTime = NextTripTime;
-                NextTripTime = CurrentTripTime.AddSeconds(30);
-
-                Logger.LogInformation($"Scheduled next trip, key=[{Entity.Current.EntityKey}], datetime=[{NextTripTime}]");
-                Entity.Current.SignalEntity<IVehicle>(Entity.Current.EntityKey, NextTripTime, proxy => proxy.Trip());
-            }
-            catch (Exception ex)
-            {
-                // Ensure to log an error when eternal loop is breaking
-                Logger.LogError($"Failed to schedule next trip, error=[{ex}]");
-
-                await Delete();
-            }
-        }
 
         public async Task Trip()
         {
@@ -134,7 +96,7 @@ namespace AutomotiveWorld.Entities
             {
                 Kilometer += 1;
 
-                await SendTelemetry();
+                await SendTelemetry(Vin);
             }
             catch (Exception ex)
             {
@@ -142,37 +104,10 @@ namespace AutomotiveWorld.Entities
             }
             finally
             {
-                await ScheduleNextTrip();
             }
         }
 
-        private async Task SendTelemetry()
-        {
-            VehicleTelemetry vehicleTelemetry = new()
-            {
-                Vin = Vin,
-                VehicleJsonAsString = JsonConvert.SerializeObject(this),
-                Type = nameof(VehicleTelemetry)
-            };
 
-            string telemetry = JsonConvert.SerializeObject(vehicleTelemetry);
-            await AzureLogAnalyticsClient.Post("demoURLMonitorY", telemetry);
-        }
-
-        //public override string ToString()
-        //{
-        //    return JsonConvert.SerializeObject(this);
-        //}
-
-        //public void Show()
-        //{
-        //    Console.WriteLine("\n---------------------------");
-        //    Console.WriteLine("Vehicle Vin: {0}", Vin);
-        //    Console.WriteLine(" Frame  : {0}", this[VehiclePartType.Frame]);
-        //    Console.WriteLine(" Engine : {0}", JsonConvert.SerializeObject(Parts[VehiclePartType.Engine]));
-        //    Console.WriteLine(" #Wheels: {0}", JsonConvert.SerializeObject(Parts[VehiclePartType.Tires]));
-        //    Console.WriteLine(" #Doors : {0}", this[VehiclePartType.Door]);
-        //}
 
         [FunctionName(nameof(Vehicle))]
         public static Task Run(

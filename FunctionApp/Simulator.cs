@@ -2,6 +2,10 @@
 using AutomotiveWorld.Entities;
 using AutomotiveWorld.Models;
 using AutomotiveWorld.Network;
+using Azure.Identity;
+using Azure.ResourceManager.Resources;
+using Azure.ResourceManager;
+using Azure;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs;
@@ -21,6 +25,13 @@ using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.ResourceManager.SecurityInsights;
+using Azure.Core;
+using Azure.ResourceManager.SecurityInsights.Models;
+using System.Data;
+using System.Collections;
+using System.Reflection;
+using AutomotiveWorld.AzureClients;
 
 namespace AutomotiveWorld
 {
@@ -28,7 +39,7 @@ namespace AutomotiveWorld
     {
         public const string TimerScheduleExpression = "%SimulatorScheduleExpression%";
 
-        private const int MaxVehicles = 10;
+        private const int MaxVehicles = 2;
 
         private const int VehicleMinYear = 2018;
 
@@ -36,15 +47,18 @@ namespace AutomotiveWorld
 
         private readonly AzureLogAnalyticsClient AzureLogAnalyticsClient;
 
+        private readonly MicrosoftSentinelClient MicrosoftSentinelClient;
+
         private readonly VinGenerator VinGenerator;
 
         public string InstanceId { get; private set; }
 
-        public Simulator(ILogger<Simulator> log, AzureLogAnalyticsClient azureLogAnalyticsClient, VinGenerator vinGenerator)
+        public Simulator(ILogger<Simulator> log, AzureLogAnalyticsClient azureLogAnalyticsClient, MicrosoftSentinelClient microsoftSentinelClient, VinGenerator vinGenerator)
         {
             InstanceId = nameof(Simulator);
             Logger = log;
             AzureLogAnalyticsClient = azureLogAnalyticsClient;
+            MicrosoftSentinelClient = microsoftSentinelClient;
             VinGenerator = vinGenerator;
         }
 
@@ -57,6 +71,11 @@ namespace AutomotiveWorld
 
             try
             {
+                if (!await MicrosoftSentinelClient.AddAllDefaultRules())
+                {
+                    throw new Exception("Failed to create Microsoft Sentinel Rules");
+                }
+
                 // Check if an instance with the specified ID already exists or an existing one stopped running(completed/failed/terminated).
                 var orchestratorInstance = await client.GetStatusAsync(InstanceId);
                 if (orchestratorInstance == null
@@ -102,6 +121,16 @@ namespace AutomotiveWorld
                     functionName: nameof(ActivityRegisterVehicles),
                     input: vehiclesCount);
                 }
+
+
+                var sourceEntity = new EntityId(nameof(Driver), "ami");
+                IDriver driverProxy = context.CreateEntityProxy<IDriver>(sourceEntity);
+                DriverDto driverDto = new()
+                {
+                    Id = "200929966",
+                    Name = "ami"
+                };
+                await driverProxy.Create(driverDto);
 
                 Logger.LogInformation($"{nameof(Orchestrator)} finished successfully");
             }
@@ -185,5 +214,30 @@ namespace AutomotiveWorld
 
             return vehicles.ToImmutableDictionary();
         }
+
+        //    [FunctionName(nameof(Simulator.Run))]
+        //    [OpenApiOperation(operationId: nameof(Simulator.Run), tags: new[] { "name" })]
+        //    [OpenApiSecurity("function_key", SecuritySchemeType.ApiKey, Name = "code", In = OpenApiSecurityLocationType.Query)]
+        //    [OpenApiParameter(name: "name", In = ParameterLocation.Query, Required = true, Type = typeof(string), Description = "The **Name** parameter")]
+        //    [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "text/plain", bodyType: typeof(string), Description = "The OK response")]
+        //    public async Task<IActionResult> Run(
+        //       [HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)] HttpRequest req, ILogger log)
+        //    {
+        //        log.LogInformation("C# HTTP trigger function processed a request.");
+
+        //        string name = req.Query["name"];
+
+
+        //        string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
+        //        dynamic data = JsonConvert.DeserializeObject(requestBody);
+        //        name = name ?? data?.name;
+
+        //        string responseMessage = string.IsNullOrEmpty(name)
+        //            ? "This HTTP triggered function executed successfully. Pass a name in the query string or in the request body for a personalized response."
+        //            : $"Hello, {name}. This HTTP triggered function executed successfully.";
+
+        //        return new OkObjectResult(responseMessage);
+        //    }
+        //}
     }
 }

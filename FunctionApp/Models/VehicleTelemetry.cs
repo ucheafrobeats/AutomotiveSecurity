@@ -2,15 +2,15 @@
 
 namespace AutomotiveWorld.Models
 {
-    public class VehicleTelemetry
+    public class CustomLogTelemetry
     {
-        [JsonProperty("vin")]
-        public string Vin { get; set; }
+        [JsonProperty("entityId")]
+        public string EntityId { get; set; }
 
-        [JsonProperty("vehicleJsonAsString")]
-        public string VehicleJsonAsString;
+        [JsonProperty("jsonAsString")]
+        public string JsonAsString { get; set; }
 
         [JsonProperty("Type")]
-        public string Type;
+        public string Type { get; set; }
     }
 }

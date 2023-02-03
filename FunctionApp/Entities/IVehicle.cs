@@ -9,8 +9,6 @@ namespace AutomotiveWorld.Entities
 
         Task Delete();
 
-        Task ScheduleNextTrip();
-
         Task Trip();
     }
 }
