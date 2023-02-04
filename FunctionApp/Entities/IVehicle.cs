@@ -9,6 +9,10 @@ namespace AutomotiveWorld.Entities
 
         Task Delete();
 
-        Task Trip();
+        Task Start();
+
+        Task AddDistance(double kilometers);
+
+        Task Assign(Assignment assignment);
     }
 }

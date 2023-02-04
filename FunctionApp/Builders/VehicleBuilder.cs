@@ -25,7 +25,7 @@ namespace AutomotiveWorld.Builders
             Vin = vin;
             VehicleDto = new VehicleDto()
             {
-                Vin = vin.Value,
+                Id = vin.Value,
                 Make = vin.Make,
                 Model = vin.Model,
                 SerialNumber = vin.SerialNumber,

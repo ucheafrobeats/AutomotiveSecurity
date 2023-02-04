@@ -10,5 +10,8 @@ namespace AutomotiveWorld.Models
 
         [JsonProperty("name", Required = Required.Always)]
         public string Name { get; set; }
+
+        [JsonProperty("isAvailable")]
+        public bool IsAvailable { get; set; } = true;
     }
 }

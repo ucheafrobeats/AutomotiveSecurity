@@ -36,7 +36,7 @@ namespace AutomotiveWorld
                     tableName: Environment.GetEnvironmentVariable("LOG_ANALYTICS_WORKSPACE_TABLE_NAME", EnvironmentVariableTarget.Process));
             });
             builder.Services.AddSingleton<VinGenerator>();
-            builder.Services.AddSingleton<VehicleRepository>();
+            builder.Services.AddSingleton<EntitiesRepository>();
         }
     }
 }

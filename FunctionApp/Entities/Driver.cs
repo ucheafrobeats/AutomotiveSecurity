@@ -1,10 +1,12 @@
 ﻿using AutomotiveWorld.DataAccess;
 using AutomotiveWorld.Models;
+using AutomotiveWorld.Models.Parts;
 using AutomotiveWorld.Network;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Threading.Tasks;
 
@@ -13,13 +15,12 @@ namespace AutomotiveWorld.Entities
     [JsonObject(MemberSerialization.OptIn)]
     public class Driver : EntityBase, IDriver
     {
+        public const int RestTimeInMinutes = 5;
+
         [JsonIgnore]
-        protected VehicleRepository VehicleRepository { get; }
+        protected EntitiesRepository EntitiesRepository { get; }
 
         private readonly IDurableEntityClient DurableEntityClient;
-
-        [JsonProperty("id")]
-        public string Id { get; set; }
 
         [JsonProperty("name")]
         public string Name { get; set; }
@@ -27,21 +28,21 @@ namespace AutomotiveWorld.Entities
         [JsonProperty("tachograph")]
         public int Tachograph { get; set; } = 0;
 
-        [JsonProperty("currentTripTime")]
-        public DateTime CurrentTripTime { get; set; }
+        [JsonProperty("restTime")]
+        public TimeSpan RestTime { get; set; } = TimeSpan.FromMinutes(RestTimeInMinutes);
 
-        [JsonProperty("nextTripTime")]
-        public DateTime NextTripTime { get; set; }
+        [JsonProperty("assignment")]
+        public Assignment Assignment { get; set; }
 
         public Driver(
             ILogger<Driver> logger,
             AzureLogAnalyticsClient azureLogAnalyticsClient,
-            VehicleRepository vehicleRepository,
+            EntitiesRepository entitiesRepository,
             IDurableEntityClient durableEntityClient) : base(
                 logger,
                 azureLogAnalyticsClient)
         {
-            VehicleRepository = vehicleRepository;
+            EntitiesRepository = entitiesRepository;
             DurableEntityClient = durableEntityClient;
         }
 
@@ -50,45 +51,104 @@ namespace AutomotiveWorld.Entities
             Id = driverDto.Id;
             Name = driverDto.Name;
 
-            NextTripTime = DateTime.UtcNow.AddSeconds(10);
+            return Task.CompletedTask;
+        }
 
-            Entity.Current.SignalEntity<IDriver>(Id, NextTripTime, e => e.AssignCar());
+        public Task Assign(Assignment assignment)
+        {
+            Assignment = assignment;
+
+            Entity.Current.SignalEntity<IDriver>(Id, Assignment.ScheduledTime, e => e.StartDriving());
 
             return Task.CompletedTask;
         }
 
-        public async Task AssignCar()
+        public Task<bool> StartDriving()
         {
-            VehicleDto vehicleDto = await VehicleRepository.GetAvailableVehicle(DurableEntityClient);
-            Entity.Current.SignalEntity<IVehicle>(vehicleDto.Vin, NextTripTime, e => e.Trip());
-            Console.WriteLine("1");
+            if (Assignment is null)
+            {
+                Logger.LogWarning($"Driver has no assignment");
+                return Task.FromResult(false);
+            }
+
+            IsAvailable = false;
+
+            EntityId vehicleEntityId = new(nameof(Vehicle), Assignment.VehicleDto.Id);
+            Entity.Current.SignalEntity<IVehicle>(vehicleEntityId, e => e.Start());
+
+            Entity.Current.SignalEntity<IDriver>(Id, e => e.Driving());
+            return Task.FromResult(true);
         }
 
-        public async Task ScheduleNextTrip()
+        public Task Driving()
         {
-            try
+            if (Assignment is null)
             {
-                CurrentTripTime = NextTripTime;
-                NextTripTime = CurrentTripTime.AddMinutes(2);
-
-                Logger.LogInformation($"Scheduled next trip, key=[{Entity.Current.EntityKey}], datetime=[{NextTripTime}]");
-                Entity.Current.SignalEntity<IVehicle>(Entity.Current.EntityKey, NextTripTime, proxy => proxy.Trip());
+                Logger.LogWarning($"Driver has no assignment");
+                return Task.CompletedTask;
             }
-            catch (Exception ex)
+
+            if (Assignment.CurrentDistance > Assignment.TotalKilometers)
             {
-                // Ensure to log an error when eternal loop is breaking
-                Logger.LogError($"Failed to schedule next trip, error=[{ex}]");
-
-                await Delete();
+                Logger.LogInformation($"Finished assignment, driverId=[{Assignment.DriverDto.Id}], vehicleId=[{Assignment.VehicleDto.Id}]");
+                return Task.CompletedTask;
             }
+
+            VehicleDto vehicleDto = Assignment.VehicleDto;
+            EntityId vehicleEntityId = new(nameof(Vehicle), Assignment.VehicleDto.Id);
+
+            Engine engine = (vehicleDto.Parts[VehiclePartType.Engine] as JObject).ToObject<Engine>();
+
+            // Calculate new Kilometer
+            double distance = Math.Ceiling(engine.Displacement + engine.Cylinders);
+            Assignment.CurrentDistance += distance;
+            Entity.Current.SignalEntity<IVehicle>(vehicleEntityId, e => e.AddDistance(distance));
+
+            // Calculate new trip time
+            double tripOffset = engine.Cylinders != 0 ? engine.Displacement / engine.Cylinders : engine.Displacement;
+            TimeSpan tripTimeSpan = TimeSpan.FromSeconds(tripOffset);
+
+            Entity.Current.SignalEntity<IDriver>(Id, DateTime.UtcNow + tripTimeSpan, e => e.Driving());
+
+            return Task.CompletedTask;
         }
 
-        public async Task Drive()
+        //public async Task AssignCar()
+        //{
+        //    VehicleDto vehicleDto = await VehicleRepository.GetAvailableVehicle(DurableEntityClient);
+
+        //    var sourceEntity = Entity.Current.EntityId;
+        //    //var vehicleEntity = new EntityId(nameof(Vehicle), vehicleDto.Vin);
+
+        //    VehicleVin = vehicleDto.Vin;
+        //    Entity.Current.SignalEntity<IVehicle>(vehicleDto.Vin, e => e.SetDriverId(Id));
+        //    Entity.Current.SignalEntity<IDriver>(Id, NextTripTime, e => e.AssignCar());
+        //}
+
+        //public async Task ScheduleNextTrip()
+        //{
+        //    try
+        //    {
+        //        CurrentTripTime = NextTripTime;
+        //        NextTripTime = CurrentTripTime.AddMinutes(2);
+
+        //        Logger.LogInformation($"Scheduled next trip, key=[{Entity.Current.EntityKey}], datetime=[{NextTripTime}]");
+        //        Entity.Current.SignalEntity<IVehicle>(Entity.Current.EntityKey, NextTripTime, proxy => proxy.Trip());
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        // Ensure to log an error when eternal loop is breaking
+        //        Logger.LogError($"Failed to schedule next trip, error=[{ex}]");
+
+        //        await Delete();
+        //    }
+        //}
+
+        public async Task Drive(int totalKilometer)
         {
             try
             {
                 Tachograph += 1;
-
                 await SendTelemetry(Id);
             }
             catch (Exception ex)
@@ -97,7 +157,7 @@ namespace AutomotiveWorld.Entities
             }
             finally
             {
-                await ScheduleNextTrip();
+                //await ScheduleNextTrip();
             }
         }
 

@@ -11,11 +11,13 @@ namespace AutomotiveWorld.Entities
     {
         Task Create(DriverDto driverDto);
 
-        Task AssignCar();
+        Task Drive(int totalKilometer);
 
-        Task Drive();
+        Task Assign(Assignment assignment);
 
-        Task ScheduleNextTrip();
+        Task<bool> StartDriving();
+
+        Task Driving();
 
         Task Delete();
     }

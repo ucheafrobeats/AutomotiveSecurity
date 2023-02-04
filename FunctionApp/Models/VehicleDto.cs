@@ -8,6 +8,9 @@ namespace AutomotiveWorld.Models
     [JsonObject(MemberSerialization.OptIn)]
     public class VehicleDto
     {
+        [JsonProperty("id")]
+        public string Id { get; set; }
+
         [JsonProperty("parts")]
         public Dictionary<VehiclePartType, object> Parts = new();
 
@@ -38,9 +41,6 @@ namespace AutomotiveWorld.Models
 
         [JsonProperty("trimLevel")]
         public string TrimLevel { get; set; }
-
-        [JsonProperty("vin")]
-        public string Vin { get; set; }
 
         [JsonProperty("year", Required = Required.Always)]
         public int Year { get; set; }

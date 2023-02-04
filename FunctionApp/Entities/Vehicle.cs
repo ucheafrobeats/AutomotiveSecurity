@@ -35,8 +35,8 @@ namespace AutomotiveWorld.Entities
         [JsonProperty("model")]
         public string Model { get; set; }
 
-        [JsonProperty("kilometer")]
-        public int Kilometer { get; set; }
+        [JsonProperty("kilometers")]
+        public double Kilometers { get; set; }
 
         [JsonProperty("serialNumber", Required = Required.Always)]
         public string SerialNumber { get; set; }
@@ -47,14 +47,11 @@ namespace AutomotiveWorld.Entities
         [JsonProperty("trimLevel")]
         public string TrimLevel { get; set; }
 
-        [JsonProperty("vin")]
-        public string Vin { get; set; }
-
         [JsonProperty("year", Required = Required.Always)]
         public int Year { get; set; }
 
-        [JsonProperty("isAvailable")]
-        public bool isAvailable { get; set; } = true;
+        [JsonProperty("assignment")]
+        public Assignment Assignment { get; set; }
 
         public Vehicle(
             ILogger<Vehicle> logger,
@@ -62,6 +59,14 @@ namespace AutomotiveWorld.Entities
                 logger,
                 azureLogAnalyticsClient)
         {
+        }
+
+        public string Vin
+        {
+            get
+            {
+                return Id;
+            }
         }
 
         public object this[VehiclePartType key]
@@ -72,29 +77,34 @@ namespace AutomotiveWorld.Entities
 
         public Task Create(VehicleDto vehicleDto)
         {
+            Id = vehicleDto.Id;
             Parts.AddRange(vehicleDto.Parts);
             Accidents.AddRange(vehicleDto.Accidents);
             Battery = vehicleDto.Battery;
             Color = vehicleDto.Color;
             Make = vehicleDto.Make;
             Model = vehicleDto.Model;
-            Kilometer = vehicleDto.Kilometer;
+            Kilometers = vehicleDto.Kilometer;
             SerialNumber = vehicleDto.SerialNumber;
             Style = vehicleDto.Style;
             TrimLevel = vehicleDto.TrimLevel;
-            Vin = vehicleDto.Vin;
             Year = vehicleDto.Year;
 
             return Task.CompletedTask;
         }
 
+        public Task Assign(Assignment assignment)
+        {
+            Assignment = assignment;
 
+            return Task.CompletedTask;
+        }
 
-        public async Task Trip()
+        public async Task AddDistance(double kilometers)
         {
             try
             {
-                Kilometer += 1;
+                Kilometers += kilometers;
 
                 await SendTelemetry(Vin);
             }
@@ -107,6 +117,19 @@ namespace AutomotiveWorld.Entities
             }
         }
 
+        public Task Start()
+        {
+            IsAvailable = false;
+
+            return Task.CompletedTask;
+        }
+
+        public Task TurnOff()
+        {
+            IsAvailable = true;
+
+            return Task.CompletedTask;
+        }
 
 
         [FunctionName(nameof(Vehicle))]
