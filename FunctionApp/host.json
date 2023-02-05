@@ -13,10 +13,10 @@
       }
     },
     "logLevel": {
-      "default": "Information",
-      "Function": "Information",
+      "default": "Warning",
+      "Function": "Warning",
       "Host.Results": "Information",
-      "Host.Aggregator": "Information",
+      "Host.Aggregator": "Warning",
       "AutomotiveWorld": "Information"
     }
   }

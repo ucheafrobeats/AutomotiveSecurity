@@ -1,6 +1,7 @@
 ﻿using AutomotiveWorld.Models.Parts;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
+using Newtonsoft.Json.Linq;
 using System.Collections.Generic;
 
 namespace AutomotiveWorld.Models
@@ -52,6 +53,21 @@ namespace AutomotiveWorld.Models
         {
             get { return Parts.TryGetValue(key, out object value) ? value : null; }
             set { Parts[key] = value; }
+        }
+
+        public bool TryGetPart<T>(VehiclePartType key, out T part) where T : Part
+        {
+            part = null;
+
+            if (Parts.TryGetValue(key, out object value))
+            {
+
+                part = (value as JObject).ToObject<T>();
+                return true;
+
+            }
+
+            return false;
         }
     }
 }

@@ -26,13 +26,16 @@ namespace AutomotiveWorld.Entities
         public string Name { get; set; }
 
         [JsonProperty("tachograph")]
-        public int Tachograph { get; set; } = 0;
+        public double Tachograph { get; set; } = 0;
 
         [JsonProperty("restTime")]
         public TimeSpan RestTime { get; set; } = TimeSpan.FromMinutes(RestTimeInMinutes);
 
         [JsonProperty("assignment")]
         public Assignment Assignment { get; set; }
+
+        [JsonProperty("isAvailable")]
+        public bool IsAvailable { get { return Assignment is null; } }
 
         public Driver(
             ILogger<Driver> logger,
@@ -71,38 +74,46 @@ namespace AutomotiveWorld.Entities
                 return Task.FromResult(false);
             }
 
-            IsAvailable = false;
-
             EntityId vehicleEntityId = new(nameof(Vehicle), Assignment.VehicleDto.Id);
-            Entity.Current.SignalEntity<IVehicle>(vehicleEntityId, e => e.Start());
+            Entity.Current.SignalEntity<IVehicle>(vehicleEntityId, e => e.StartEngine());
 
             Entity.Current.SignalEntity<IDriver>(Id, e => e.Driving());
             return Task.FromResult(true);
         }
 
-        public Task Driving()
+        public async Task<bool> Driving()
         {
             if (Assignment is null)
             {
                 Logger.LogWarning($"Driver has no assignment");
-                return Task.CompletedTask;
+                Entity.Current.SignalEntity<IDriver>(Id, e => e.StopDriving());
+                return false;
             }
 
-            if (Assignment.CurrentDistance > Assignment.TotalKilometers)
+            if (Assignment.CurrentDistance == Assignment.TotalKilometers)
             {
                 Logger.LogInformation($"Finished assignment, driverId=[{Assignment.DriverDto.Id}], vehicleId=[{Assignment.VehicleDto.Id}]");
-                return Task.CompletedTask;
+                Entity.Current.SignalEntity<IDriver>(Id, e => e.StopDriving());
+                return false;
             }
 
             VehicleDto vehicleDto = Assignment.VehicleDto;
-            EntityId vehicleEntityId = new(nameof(Vehicle), Assignment.VehicleDto.Id);
 
-            Engine engine = (vehicleDto.Parts[VehiclePartType.Engine] as JObject).ToObject<Engine>();
+            if (!vehicleDto.TryGetPart(VehiclePartType.Engine, out Engine engine))
+            {
+                Logger.LogCritical("Vehicle has no engine");
+            }
 
             // Calculate new Kilometer
             double distance = Math.Ceiling(engine.Displacement + engine.Cylinders);
+            if (Assignment.CurrentDistance + distance > Assignment.TotalKilometers)
+            {
+                distance -= Assignment.CurrentDistance + distance - Assignment.TotalKilometers;
+            }
             Assignment.CurrentDistance += distance;
-            Entity.Current.SignalEntity<IVehicle>(vehicleEntityId, e => e.AddDistance(distance));
+            Tachograph += distance;
+            Entity.Current.SignalEntity<IVehicle>(vehicleDto.Id, e => e.AddDistance(distance));
+            Logger.LogInformation($"Assignment status id=[{Assignment.Id}], driverId=[{Assignment.DriverDto.Id}], vehicleId=[{Assignment.VehicleDto.Id}], [{Assignment.CurrentDistance}/{Assignment.TotalKilometers}]");
 
             // Calculate new trip time
             double tripOffset = engine.Cylinders != 0 ? engine.Displacement / engine.Cylinders : engine.Displacement;
@@ -110,55 +121,35 @@ namespace AutomotiveWorld.Entities
 
             Entity.Current.SignalEntity<IDriver>(Id, DateTime.UtcNow + tripTimeSpan, e => e.Driving());
 
+            await SendTelemetry(Id);
+
+            return true;
+        }
+
+        public Task StopDriving()
+        {
+            if (Assignment is null)
+            {
+                return Task.CompletedTask;
+            }
+
+            Logger.LogInformation($"Stop driving, driverId=[{Assignment.DriverDto.Id}], vehicleId=[{Assignment.VehicleDto.Id}]");
+
+            Entity.Current.SignalEntity<IVehicle>(Assignment.VehicleDto.Id, e => e.TurnOffEngine());
+            Entity.Current.SignalEntity<IDriver>(Id, e => e.Unassign());
             return Task.CompletedTask;
         }
 
-        //public async Task AssignCar()
-        //{
-        //    VehicleDto vehicleDto = await VehicleRepository.GetAvailableVehicle(DurableEntityClient);
-
-        //    var sourceEntity = Entity.Current.EntityId;
-        //    //var vehicleEntity = new EntityId(nameof(Vehicle), vehicleDto.Vin);
-
-        //    VehicleVin = vehicleDto.Vin;
-        //    Entity.Current.SignalEntity<IVehicle>(vehicleDto.Vin, e => e.SetDriverId(Id));
-        //    Entity.Current.SignalEntity<IDriver>(Id, NextTripTime, e => e.AssignCar());
-        //}
-
-        //public async Task ScheduleNextTrip()
-        //{
-        //    try
-        //    {
-        //        CurrentTripTime = NextTripTime;
-        //        NextTripTime = CurrentTripTime.AddMinutes(2);
-
-        //        Logger.LogInformation($"Scheduled next trip, key=[{Entity.Current.EntityKey}], datetime=[{NextTripTime}]");
-        //        Entity.Current.SignalEntity<IVehicle>(Entity.Current.EntityKey, NextTripTime, proxy => proxy.Trip());
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        // Ensure to log an error when eternal loop is breaking
-        //        Logger.LogError($"Failed to schedule next trip, error=[{ex}]");
-
-        //        await Delete();
-        //    }
-        //}
-
-        public async Task Drive(int totalKilometer)
+        public Task Unassign()
         {
-            try
+            if (Assignment is null)
             {
-                Tachograph += 1;
-                await SendTelemetry(Id);
+                return Task.CompletedTask;
             }
-            catch (Exception ex)
-            {
-                //Logger.LogError($"Exception occurred while trip, entity=[{Entity.Current.EntityKey}], error=[{ex}]");
-            }
-            finally
-            {
-                //await ScheduleNextTrip();
-            }
+
+            Logger.LogInformation($"Unassign driverId=[{Assignment.DriverDto.Id}], vehicleId=[{Assignment.VehicleDto.Id}]");
+            Assignment = null;
+            return Task.CompletedTask;
         }
 
         [FunctionName(nameof(Driver))]

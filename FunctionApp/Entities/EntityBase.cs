@@ -23,9 +23,6 @@ namespace AutomotiveWorld.Entities
         [JsonProperty("id")]
         public string Id { get; set; }
 
-        [JsonProperty("isAvailable")]
-        public bool IsAvailable { get; set; } = true;
-
         public EntityBase(
             ILogger logger,
             AzureLogAnalyticsClient azureLogAnalyticsClient)

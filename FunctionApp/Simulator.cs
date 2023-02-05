@@ -66,7 +66,7 @@ namespace AutomotiveWorld
             EntitiesRepository vehicleRepository,
             VinGenerator vinGenerator)
         {
-            InstanceId = nameof(Simulator);
+            InstanceId = nameof(FleetManagerOrchestrator);
             Logger = log;
             AzureLogAnalyticsClient = azureLogAnalyticsClient;
             MicrosoftSentinelClient = microsoftSentinelClient;
@@ -83,10 +83,10 @@ namespace AutomotiveWorld
 
             try
             {
-                if (!await MicrosoftSentinelClient.AddAllDefaultRules())
-                {
-                    throw new Exception("Failed to create Microsoft Sentinel Rules");
-                }
+                //if (!await MicrosoftSentinelClient.AddAllDefaultRules())
+                //{
+                //    throw new Exception("Failed to create Microsoft Sentinel Rules");
+                //}
 
                 // Check if an instance with the specified ID already exists or an existing one stopped running(completed/failed/terminated).
                 var orchestratorInstance = await client.GetStatusAsync(InstanceId);
@@ -97,7 +97,7 @@ namespace AutomotiveWorld
                 {
                     // Trigger singleton orchestrator function
                     _ = await client.StartNewAsync(
-                        orchestratorFunctionName: nameof(Orchestrator),
+                        orchestratorFunctionName: nameof(FleetManagerOrchestrator),
                         instanceId: InstanceId);
                 }
                 else
@@ -114,12 +114,12 @@ namespace AutomotiveWorld
             }
         }
 
-        [FunctionName(nameof(Orchestrator))]
-        public async Task Orchestrator(
-            [OrchestrationTrigger] IDurableOrchestrationContext context)
-        {
-            await context.CallSubOrchestratorAsync(nameof(FleetManagerOrchestrator), "CompanyNameFleetManagerOrchestrator", "CompanyName");
-        }
+        //[FunctionName(nameof(Orchestrator))]
+        //public async Task Orchestrator(
+        //    [OrchestrationTrigger] IDurableOrchestrationContext context)
+        //{
+        //    await context.CallSubOrchestratorAsync(nameof(FleetManagerOrchestrator), "CompanyNameFleetManagerOrchestrator", "CompanyName");
+        //}
 
         [FunctionName(nameof(FleetManagerOrchestrator))]
         public async Task FleetManagerOrchestrator(
@@ -131,54 +131,15 @@ namespace AutomotiveWorld
             {
                 Logger.LogInformation($"{nameof(FleetManagerOrchestrator)} has started");
 
-                int vehiclesCount = await context.CallActivityAsync<int>(nameof(ActivityGetVehiclesCount), null);
-                if (vehiclesCount < MaxVehicles)
+                var tasks = new List<Task<int>>
                 {
-                    await context.CallActivityAsync<int>(nameof(ActivityRegisterVehicles), vehiclesCount);
-                }
+                    context.CallActivityAsync<int>(nameof(ActivityRegisterVehicles), null),
+                    context.CallActivityAsync<int>(nameof(ActivityRegisterDrivers), null)
+                };
+                await Task.WhenAll(tasks);
 
-                int driversCount = await context.CallActivityAsync<int>(nameof(ActivityGetDriversCount), null);
-                if (driversCount < MaxDrivers)
-                {
-                    await context.CallActivityAsync<int>(nameof(ActivityRegisterDrivers), driversCount);
-                }
+                await context.CallSubOrchestratorAsync(nameof(FleetManagerAssignSubOrchestrator), nameof(FleetManagerAssignSubOrchestrator), null);
 
-                DriverDto driverDto = null;
-                VehicleDto vehicleDto = null;
-
-                // Assign next assignment
-                do
-                {
-                    // loop until we have a match
-                    driverDto = await context.CallActivityAsync<DriverDto>(nameof(ActivityGetAvailableDriver), null);
-                    vehicleDto = await context.CallActivityAsync<VehicleDto>(nameof(ActivityGetAvailableVehicle), null);
-
-                    DateTime dueTime = context.CurrentUtcDateTime.AddSeconds(30);
-                    await context.CreateTimer(dueTime, CancellationToken.None);
-                } while (driverDto == null && vehicleDto == null);
-
-                EntityId driverEntityId = new(nameof(Driver), driverDto.Id);
-                EntityId vehicleEntity = new(nameof(Vehicle), vehicleDto.Id);
-
-                IDriver driverProxy = context.CreateEntityProxy<IDriver>(driverEntityId);
-                IVehicle vehicleProxy = context.CreateEntityProxy<IVehicle>(vehicleEntity);
-
-                using (await context.LockAsync(driverEntityId, vehicleEntity))
-                {
-                    Assignment assignment = new()
-                    {
-                        DriverDto = driverDto,
-                        VehicleDto = vehicleDto,
-                        TotalKilometers = 20,
-                        ScheduledTime = context.CurrentUtcDateTime.AddSeconds(30)
-                    };
-
-                    await driverProxy.Assign(assignment);
-                    await vehicleProxy.Assign(assignment);
-                }
-
-                DateTime scheduledTimeUtc = context.CurrentUtcDateTime.AddMinutes(5);
-                context.SignalEntity(driverEntityId, scheduledTimeUtc, "Drive", 100);
                 Logger.LogInformation($"{nameof(FleetManagerOrchestrator)} finished successfully");
             }
             catch (Exception ex)
@@ -188,26 +149,72 @@ namespace AutomotiveWorld
             }
             finally
             {
-                DateTime deadline = context.CurrentUtcDateTime.Add(TimeSpan.FromSeconds(30));
-                await context.CreateTimer(deadline, CancellationToken.None);
+                //DateTime deadline = context.CurrentUtcDateTime.Add(TimeSpan.FromSeconds(30));
+                //await context.CreateTimer(deadline, CancellationToken.None);
 
-                context.StartNewOrchestration(nameof(Simulator.FleetManagerOrchestrator), null, "CompanyNameFleetManagerOrchestrator");
+                //context.StartNewOrchestration(nameof(Simulator.FleetManagerOrchestrator), null, "CompanyNameFleetManagerOrchestrator");
             }
         }
 
+        [FunctionName(nameof(FleetManagerAssignSubOrchestrator))]
+        public async Task FleetManagerAssignSubOrchestrator(
+           [OrchestrationTrigger] IDurableOrchestrationContext context)
+        {
+            Logger.LogInformation($"{nameof(FleetManagerAssignSubOrchestrator)} has started");
+
+            DriverDto driverDto = null;
+            VehicleDto vehicleDto = null;
+
+            // Assign next assignment
+            driverDto = await context.CallActivityAsync<DriverDto>(nameof(ActivityGetAvailableDriver), null);
+            vehicleDto = await context.CallActivityAsync<VehicleDto>(nameof(ActivityGetAvailableVehicle), null);
+
+            if (driverDto == null && vehicleDto == null)
+            {
+                Logger.LogInformation($"{nameof(FleetManagerAssignSubOrchestrator)} couldn't match assignment, availableDriver=[{driverDto is null}], availableVehicle=[{vehicleDto is null}]");
+                DateTime dueTime = context.CurrentUtcDateTime.AddSeconds(10);
+                await context.CreateTimer(dueTime, CancellationToken.None);
+            }
+
+            EntityId driverEntityId = new(nameof(Driver), driverDto.Id);
+            EntityId vehicleEntity = new(nameof(Vehicle), vehicleDto.Id);
+
+            IDriver driverProxy = context.CreateEntityProxy<IDriver>(driverEntityId);
+            IVehicle vehicleProxy = context.CreateEntityProxy<IVehicle>(vehicleEntity);
+
+            using (await context.LockAsync(driverEntityId, vehicleEntity))
+            {
+                Assignment assignment = new()
+                {
+                    DriverDto = driverDto,
+                    VehicleDto = vehicleDto,
+                    TotalKilometers = 100,
+                    ScheduledTime = context.CurrentUtcDateTime.AddSeconds(30)
+                };
+
+                await driverProxy.Assign(assignment);
+                await vehicleProxy.Assign(assignment);
+            }
+
+            DateTime scheduledTimeUtc = context.CurrentUtcDateTime.AddMinutes(1);
+            context.SignalEntity(driverEntityId, scheduledTimeUtc, nameof(Driver.StartDriving));
+            Logger.LogInformation($"{nameof(FleetManagerAssignSubOrchestrator)} finished successfully");
+        }
 
         [FunctionName(nameof(ActivityRegisterDrivers))]
         public async Task<int> ActivityRegisterDrivers(
-            [ActivityTrigger] int driversCount,
+            [ActivityTrigger] IDurableActivityContext context,
             [DurableClient] IDurableEntityClient client)
         {
+            int driversCount = await EntitiesRepository.Count<Driver>(client);
+
             for (int i = driversCount; i < MaxDrivers; i++)
             {
                 DriverDto driverDto = DriverGenerator.GenerateDriverDto();
 
                 await client.SignalEntityAsync<IDriver>(driverDto.Id, proxy => proxy.Create(driverDto));
 
-                Logger.LogInformation($"Added {driverDto.Id}");
+                Logger.LogInformation($"Registered driver, id=[{driverDto.Id}]");
             }
 
             return 0;
@@ -216,9 +223,11 @@ namespace AutomotiveWorld
 
         [FunctionName(nameof(ActivityRegisterVehicles))]
         public async Task<int> ActivityRegisterVehicles(
-            [ActivityTrigger] int vehiclesCount,
+            [ActivityTrigger] IDurableActivityContext context,
             [DurableClient] IDurableEntityClient client)
         {
+            int vehiclesCount = await EntitiesRepository.Count<Vehicle>(client);
+
             for (int i = vehiclesCount; i < MaxVehicles; i++)
             {
                 Vin vin = await VinGenerator.Next(VehicleMinYear, DateTime.Now.Year);
@@ -226,7 +235,7 @@ namespace AutomotiveWorld
 
                 await client.SignalEntityAsync<IVehicle>(vin.Value, proxy => proxy.Create(vehicleDto));
 
-                Logger.LogInformation($"Added {vehicleDto.Id}");
+                Logger.LogInformation($"Registered vehicle, id=[{vehicleDto.Id}]");
             }
 
             return 0;
@@ -249,22 +258,6 @@ namespace AutomotiveWorld
             return await EntitiesRepository.GetAvailableDriver(client);
         }
 
-
-        [FunctionName(nameof(ActivityGetDriversCount))]
-        public async Task<int> ActivityGetDriversCount(
-        [ActivityTrigger] IDurableActivityContext context,
-        [DurableClient] IDurableEntityClient client)
-        {
-            return await EntitiesRepository.Count<Driver>(client);
-        }
-
-        [FunctionName(nameof(ActivityGetVehiclesCount))]
-        public async Task<int> ActivityGetVehiclesCount(
-        [ActivityTrigger] IDurableActivityContext context,
-        [DurableClient] IDurableEntityClient client)
-        {
-            return await EntitiesRepository.Count<Vehicle>(client);
-        }
 
         //    [FunctionName(nameof(Simulator.Run))]
         //    [OpenApiOperation(operationId: nameof(Simulator.Run), tags: new[] { "name" })]

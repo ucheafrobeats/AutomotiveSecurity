@@ -7,6 +7,7 @@ using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Extensions;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -53,6 +54,9 @@ namespace AutomotiveWorld.Entities
         [JsonProperty("assignment")]
         public Assignment Assignment { get; set; }
 
+        [JsonProperty("isAvailable")]
+        public bool IsAvailable { get { return Assignment is null; } }
+
         public Vehicle(
             ILogger<Vehicle> logger,
             AzureLogAnalyticsClient azureLogAnalyticsClient) : base(
@@ -61,18 +65,27 @@ namespace AutomotiveWorld.Entities
         {
         }
 
-        public string Vin
-        {
-            get
-            {
-                return Id;
-            }
-        }
+        public string Vin { get { return Id; } }
 
         public object this[VehiclePartType key]
         {
             get { return Parts.TryGetValue(key, out object value) ? value : null; }
             set { Parts[key] = value; }
+        }
+
+        public bool TryGetPart<T>(VehiclePartType key, out T part) where T : Part
+        {
+            part = null;
+
+            if (Parts.TryGetValue(key, out object value))
+            {
+
+                part = (value as JObject).ToObject<T>();
+                return true;
+
+            }
+
+            return false;
         }
 
         public Task Create(VehicleDto vehicleDto)
@@ -102,32 +115,42 @@ namespace AutomotiveWorld.Entities
 
         public async Task AddDistance(double kilometers)
         {
-            try
-            {
-                Kilometers += kilometers;
+            Kilometers += kilometers;
 
-                await SendTelemetry(Vin);
-            }
-            catch (Exception ex)
-            {
-                //Logger.LogError($"Exception occurred while trip, entity=[{Entity.Current.EntityKey}], error=[{ex}]");
-            }
-            finally
-            {
-            }
+            await SendTelemetry(Id);
         }
 
-        public Task Start()
+        public Task StartEngine()
         {
-            IsAvailable = false;
+            if (TryGetPart(VehiclePartType.Engine, out Engine engine))
+            {
+                engine.Status = EngineStatus.On;
+            }
 
             return Task.CompletedTask;
         }
 
-        public Task TurnOff()
+        public Task TurnOffEngine()
         {
-            IsAvailable = true;
+            if (TryGetPart(VehiclePartType.Engine, out Engine engine))
+            {
+                engine.Status = EngineStatus.Off;
+            }
 
+            Entity.Current.SignalEntity<IVehicle>(Id, e => e.Unassign());
+
+            return Task.CompletedTask;
+        }
+
+        public Task Unassign()
+        {
+            if (Assignment is null)
+            {
+                return Task.CompletedTask;
+            }
+
+            Logger.LogInformation($"Unassign driverId=[{Assignment.DriverDto.Id}], vehicleId=[{Assignment.VehicleDto.Id}]");
+            Assignment = null;
             return Task.CompletedTask;
         }
 

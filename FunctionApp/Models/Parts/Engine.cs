@@ -14,5 +14,8 @@ namespace AutomotiveWorld.Models.Parts
 
         [JsonProperty("cylinders")]
         public int Cylinders { get; set; }
+
+        [JsonProperty("status")]
+        public EngineStatus Status { get; set; }
     }
 }
