@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using AutomotiveWorld.DataAccess;
+using Newtonsoft.Json;
 using System;
 
 namespace AutomotiveWorld.Models

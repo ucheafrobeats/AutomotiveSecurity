@@ -1,5 +1,4 @@
 ﻿using AutomotiveWorld.Entities;
-using AutomotiveWorld.Models;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
@@ -20,14 +19,14 @@ namespace AutomotiveWorld.DataAccess
         public EntitiesRepository(
             ILogger<Driver> logger)
         {
-
+            Logger = logger;
         }
 
-        public async Task<int> Count<T>(IDurableEntityClient client) where T : EntityBase
+        public async Task<int> Count<TEntity>(IDurableEntityClient client) where TEntity : EntityBase
         {
             int count = 0;
 
-            Type type = typeof(T);
+            Type type = typeof(TEntity);
             string typeName = type.Name;
 
             using var source = new CancellationTokenSource();
@@ -67,16 +66,18 @@ namespace AutomotiveWorld.DataAccess
             return count;
         }
 
-        public async Task<DriverDto> GetAvailableDriver(IDurableEntityClient client)
+        public async Task<TDto> GetFirstAvailable<TEntity, TDto>(IDurableEntityClient client, int pageSize = 100, bool fetchState = true)
+            where TEntity : EntityBase
+            where TDto : DtoBase
         {
-            DriverDto driverDto = null;
+            TDto dto = null;
 
             using var source = new CancellationTokenSource();
             var query = new EntityQuery
             {
-                PageSize = 100,
-                FetchState = true,
-                EntityName = typeof(Driver).Name
+                PageSize = pageSize,
+                FetchState = fetchState,
+                EntityName = typeof(TEntity).Name
             };
 
             do
@@ -100,72 +101,18 @@ namespace AutomotiveWorld.DataAccess
 
                     try
                     {
-                        driverDto = durableEntityStatus.State.ToObject<DriverDto>();
+                        dto = durableEntityStatus.State.ToObject<TDto>();
 
-                        if (!driverDto.IsAvailable)
+                        if (!dto.IsAvailable)
                         {
                             continue;
                         }
 
-                        return driverDto;
+                        return dto;
                     }
                     catch (Exception ex)
                     {
-                        Logger.LogError($"Failed to deserialize object, type=[{nameof(DriverDto)}], entityId=[{entityId}], error=[{ex}]");
-                    }
-                }
-
-                query.ContinuationToken = result.ContinuationToken;
-            }
-            while (query.ContinuationToken != null);
-            return null;
-        }
-
-        public async Task<VehicleDto> GetAvailableVehicle(IDurableEntityClient client)
-        {
-            VehicleDto vehicleDto = null;
-
-            using var source = new CancellationTokenSource();
-            var query = new EntityQuery
-            {
-                PageSize = 100,
-                FetchState = true,
-                EntityName = typeof(Vehicle).Name
-            };
-
-            do
-            {
-                // Paginate over all entities
-                var result = await client.ListEntitiesAsync(query, source.Token);
-                if (result?.Entities == null)
-                {
-                    break;
-                }
-
-                foreach (var durableEntityStatus in result.Entities)
-                {
-                    var entityId = durableEntityStatus.EntityId.EntityKey;
-
-                    if (durableEntityStatus.State == null)
-                    {
-                        // entity state might be null for instances marked as deleted and before being purged
-                        continue;
-                    }
-
-                    try
-                    {
-                        vehicleDto = durableEntityStatus.State.ToObject<VehicleDto>();
-
-                        if (!vehicleDto.IsAvailable)
-                        {
-                            continue;
-                        }
-
-                        return vehicleDto;
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger.LogError($"Failed to deserialize object, type=[{nameof(VehicleDto)}], entityId=[{entityId}], error=[{ex}]");
+                        Logger.LogError($"Failed to deserialize object, type=[{nameof(TDto)}], entityId=[{entityId}], error=[{ex}]");
                     }
                 }
 

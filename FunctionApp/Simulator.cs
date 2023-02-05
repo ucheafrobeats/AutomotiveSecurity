@@ -194,6 +194,8 @@ namespace AutomotiveWorld
 
                 await driverProxy.Assign(assignment);
                 await vehicleProxy.Assign(assignment);
+
+                Logger.LogInformation($"Created new assignment, assignmentId=[{assignment.Id}], driverId=[{driverDto.Id}], vehicleId=[{vehicleDto.Id}]");
             }
 
             DateTime scheduledTimeUtc = context.CurrentUtcDateTime.AddMinutes(1);
@@ -247,7 +249,7 @@ namespace AutomotiveWorld
             [ActivityTrigger] IDurableActivityContext context,
             [DurableClient] IDurableEntityClient client)
         {
-            return await EntitiesRepository.GetAvailableVehicle(client);
+            return await EntitiesRepository.GetFirstAvailable<Vehicle, VehicleDto>(client);
         }
 
         [FunctionName(nameof(ActivityGetAvailableDriver))]
@@ -255,7 +257,7 @@ namespace AutomotiveWorld
             [ActivityTrigger] IDurableActivityContext context,
             [DurableClient] IDurableEntityClient client)
         {
-            return await EntitiesRepository.GetAvailableDriver(client);
+            return await EntitiesRepository.GetFirstAvailable<Driver, DriverDto>(client);
         }
 
 

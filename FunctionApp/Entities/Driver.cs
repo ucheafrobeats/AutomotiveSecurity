@@ -61,8 +61,6 @@ namespace AutomotiveWorld.Entities
         {
             Assignment = assignment;
 
-            Entity.Current.SignalEntity<IDriver>(Id, Assignment.ScheduledTime, e => e.StartDriving());
-
             return Task.CompletedTask;
         }
 
@@ -70,7 +68,7 @@ namespace AutomotiveWorld.Entities
         {
             if (Assignment is null)
             {
-                Logger.LogWarning($"Driver has no assignment");
+                Logger.LogWarning($"Driver has no assignment, id=[{Id}]");
                 return Task.FromResult(false);
             }
 
@@ -85,14 +83,7 @@ namespace AutomotiveWorld.Entities
         {
             if (Assignment is null)
             {
-                Logger.LogWarning($"Driver has no assignment");
-                Entity.Current.SignalEntity<IDriver>(Id, e => e.StopDriving());
-                return false;
-            }
-
-            if (Assignment.CurrentDistance == Assignment.TotalKilometers)
-            {
-                Logger.LogInformation($"Finished assignment, driverId=[{Assignment.DriverDto.Id}], vehicleId=[{Assignment.VehicleDto.Id}]");
+                Logger.LogWarning($"Driver has no assignment, Id=[{Id}]");
                 Entity.Current.SignalEntity<IDriver>(Id, e => e.StopDriving());
                 return false;
             }
@@ -113,15 +104,22 @@ namespace AutomotiveWorld.Entities
             Assignment.CurrentDistance += distance;
             Tachograph += distance;
             Entity.Current.SignalEntity<IVehicle>(vehicleDto.Id, e => e.AddDistance(distance));
-            Logger.LogInformation($"Assignment status id=[{Assignment.Id}], driverId=[{Assignment.DriverDto.Id}], vehicleId=[{Assignment.VehicleDto.Id}], [{Assignment.CurrentDistance}/{Assignment.TotalKilometers}]");
+            Logger.LogInformation($"Assignment status, id=[{Assignment.Id}], driverId=[{Assignment.DriverDto.Id}], vehicleId=[{Assignment.VehicleDto.Id}], [{Assignment.CurrentDistance}/{Assignment.TotalKilometers}]");
+
+            await SendTelemetry(Id);
+
+            if (Assignment.CurrentDistance == Assignment.TotalKilometers)
+            {
+                Logger.LogInformation($"Finalizing assignment id=[{Assignment}], driverId=[{Assignment.DriverDto.Id}], vehicleId=[{Assignment.VehicleDto.Id}]");
+                Entity.Current.SignalEntity<IDriver>(Id, e => e.StopDriving());
+                return false;
+            }
 
             // Calculate new trip time
             double tripOffset = engine.Cylinders != 0 ? engine.Displacement / engine.Cylinders : engine.Displacement;
             TimeSpan tripTimeSpan = TimeSpan.FromSeconds(tripOffset);
 
             Entity.Current.SignalEntity<IDriver>(Id, DateTime.UtcNow + tripTimeSpan, e => e.Driving());
-
-            await SendTelemetry(Id);
 
             return true;
         }
@@ -130,6 +128,7 @@ namespace AutomotiveWorld.Entities
         {
             if (Assignment is null)
             {
+                Logger.LogWarning($"Driver has no assignment, Id=[{Id}]");
                 return Task.CompletedTask;
             }
 
@@ -144,10 +143,11 @@ namespace AutomotiveWorld.Entities
         {
             if (Assignment is null)
             {
+                Logger.LogWarning($"Driver has no assignment, Id=[{Id}]");
                 return Task.CompletedTask;
             }
 
-            Logger.LogInformation($"Unassign driverId=[{Assignment.DriverDto.Id}], vehicleId=[{Assignment.VehicleDto.Id}]");
+            Logger.LogInformation($"Driver unassign, driverId=[{Assignment.DriverDto.Id}], vehicleId=[{Assignment.VehicleDto.Id}]");
             Assignment = null;
             return Task.CompletedTask;
         }

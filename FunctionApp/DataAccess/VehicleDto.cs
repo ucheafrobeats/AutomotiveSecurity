@@ -1,17 +1,15 @@
-﻿using AutomotiveWorld.Models.Parts;
+﻿using AutomotiveWorld.Models;
+using AutomotiveWorld.Models.Parts;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Linq;
 using System.Collections.Generic;
 
-namespace AutomotiveWorld.Models
+namespace AutomotiveWorld.DataAccess
 {
     [JsonObject(MemberSerialization.OptIn)]
-    public class VehicleDto
+    public class VehicleDto : DtoBase
     {
-        [JsonProperty("id")]
-        public string Id { get; set; }
-
         [JsonProperty("parts")]
         public Dictionary<VehiclePartType, object> Parts = new();
 

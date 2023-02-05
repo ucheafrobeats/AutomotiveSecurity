@@ -1,4 +1,5 @@
-﻿using AutomotiveWorld.Models;
+﻿using AutomotiveWorld.DataAccess;
+using AutomotiveWorld.Models;
 using AutomotiveWorld.Models.Parts;
 using AutomotiveWorld.Network;
 using Microsoft.Azure.WebJobs;
@@ -149,7 +150,7 @@ namespace AutomotiveWorld.Entities
                 return Task.CompletedTask;
             }
 
-            Logger.LogInformation($"Unassign driverId=[{Assignment.DriverDto.Id}], vehicleId=[{Assignment.VehicleDto.Id}]");
+            Logger.LogInformation($"Vehicle unassign, driverId=[{Assignment.DriverDto.Id}], vehicleId=[{Assignment.VehicleDto.Id}]");
             Assignment = null;
             return Task.CompletedTask;
         }

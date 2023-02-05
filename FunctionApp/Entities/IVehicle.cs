@@ -1,4 +1,5 @@
-﻿using AutomotiveWorld.Models;
+﻿using AutomotiveWorld.DataAccess;
+using AutomotiveWorld.Models;
 using System.Threading.Tasks;
 
 namespace AutomotiveWorld.Entities
