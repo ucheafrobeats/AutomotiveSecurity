@@ -22,6 +22,8 @@ namespace AutomotiveWorld.Entities
 
         private readonly IDurableEntityClient DurableEntityClient;
 
+        private readonly IDurableOrchestrationClient DurableOrchestrationClient;
+
         [JsonProperty("name")]
         public string Name { get; set; }
 
@@ -41,12 +43,14 @@ namespace AutomotiveWorld.Entities
             ILogger<Driver> logger,
             AzureLogAnalyticsClient azureLogAnalyticsClient,
             EntitiesRepository entitiesRepository,
-            IDurableEntityClient durableEntityClient) : base(
+            IDurableEntityClient durableEntityClient,
+            IDurableOrchestrationClient durableOrchestrationClient) : base(
                 logger,
                 azureLogAnalyticsClient)
         {
             EntitiesRepository = entitiesRepository;
             DurableEntityClient = durableEntityClient;
+            DurableOrchestrationClient = durableOrchestrationClient;
         }
 
         public Task<bool> IsAvailable()
@@ -145,25 +149,27 @@ namespace AutomotiveWorld.Entities
             return Task.CompletedTask;
         }
 
-        public Task Unassign()
+        public async Task Unassign()
         {
             if (Assignment is null)
             {
                 Logger.LogWarning($"Driver has no assignment, Id=[{Id}]");
-                return Task.CompletedTask;
+                return;
             }
 
             Logger.LogInformation($"Driver unassign, driverId=[{Assignment.DriverDto.Id}], vehicleId=[{Assignment.VehicleDto.Id}]");
             Assignment = null;
-            return Task.CompletedTask;
+            await DurableOrchestrationClient.RaiseEventAsync("StaticIdA", "CityPlanningApproval", true);
+            return;
         }
 
         [FunctionName(nameof(Driver))]
         public static Task Run(
-            [EntityTrigger] IDurableEntityContext ctx,
-            [DurableClient] IDurableEntityClient client)
+            [EntityTrigger] IDurableEntityContext context,
+            [DurableClient] IDurableEntityClient durableEntityClient,
+            [DurableClient] IDurableOrchestrationClient durableOrchestrationClient)
         {
-            return ctx.DispatchAsync<Driver>(client);
+            return context.DispatchAsync<Driver>(durableEntityClient, durableOrchestrationClient);
         }
     }
 }

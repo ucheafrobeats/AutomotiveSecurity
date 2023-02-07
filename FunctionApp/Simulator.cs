@@ -183,6 +183,7 @@ namespace AutomotiveWorld
 
                 if (driverDto is null || vehicleDto is null)
                 {
+
                     string availabilityMessage = driverDto is null ? "no available Driver" : "no available Vehicle";
                     Logger.LogInformation($"Cannot assign new task, {availabilityMessage}");
                     break;
