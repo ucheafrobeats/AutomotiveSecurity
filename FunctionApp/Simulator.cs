@@ -42,8 +42,6 @@ namespace AutomotiveWorld
     {
         public const string TimerScheduleExpression = "%SimulatorScheduleExpression%";
 
-        private static readonly Random Rand = new();
-
         private const int MaxVehicles = 3;
 
         private const int MaxDrivers = 2;
@@ -177,6 +175,8 @@ namespace AutomotiveWorld
         {
             Array simulatorEventTypes = (SimulatorEventType[])Enum.GetValues(typeof(SimulatorEventType));
 
+            Random Rand = new();
+
             SimulatorEventType simulatorEventType = (SimulatorEventType)simulatorEventTypes.GetValue(Rand.Next(simulatorEventTypes.Length));
             switch (simulatorEventType)
             {
@@ -199,23 +199,6 @@ namespace AutomotiveWorld
                     break;
             }
         }
-
-        //[FunctionName(nameof(FleetManagerEternalOrchestrationTrigger))]
-        //public static async Task<HttpResponseMessage> FleetManagerEternalOrchestrationTrigger(
-        //    [HttpTrigger(AuthorizationLevel.Function, "get", Route = nameof(FleetManagerEternalOrchestrationTrigger))] HttpRequestMessage request,
-        //    [DurableClient] IDurableOrchestrationClient client)
-        //{
-        //    Assignment assignment = new()
-        //    {
-        //        TotalKilometers = 100,
-        //        ScheduledTime = DateTime.UtcNow.AddMinutes(3)
-        //    };
-
-        //    var instanceId = assignment.Id;
-
-        //    await client.StartNewAsync(nameof(FleetManagerAssignOrchestrator), instanceId, assignment);
-        //    return client.CreateCheckStatusResponse(request, instanceId);
-        //}
 
         [FunctionName(nameof(FleetManagerAssignOrchestrator))]
         public async Task FleetManagerAssignOrchestrator(

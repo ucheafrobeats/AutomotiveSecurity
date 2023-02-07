@@ -1,6 +1,7 @@
 ﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
 
-namespace AutomotiveWorld.Models
+namespace AutomotiveWorld.Models.Telemetry
 {
     public class CustomLogTelemetry
     {

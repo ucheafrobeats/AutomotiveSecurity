@@ -6,11 +6,7 @@ namespace AutomotiveWorld.Builders
 {
     class CarBuilder : VehicleBuilder
     {
-        private const int PsiMinValue = 32;
-
-        private const int PsiMaxValue = 38;
-
-        private const int SpareTires = 1;
+        public const int SpareTires = 1;
 
         private static readonly TireSideType[] TireSideTypes = {
             TireSideType.LeftFront,
@@ -19,8 +15,8 @@ namespace AutomotiveWorld.Builders
             TireSideType.RightRear
         };
 
-        public CarBuilder(Vin vin)
-            : base(vin)
+        public CarBuilder(Vin vin, PsiSpec psiSpec)
+            : base(vin, psiSpec)
         {
         }
 
@@ -33,7 +29,8 @@ namespace AutomotiveWorld.Builders
 
         public override void BuildTires()
         {
-            base.BuildTires(TireSideTypes, PsiMinValue, PsiMaxValue, SpareTires);
+
+            base.BuildTires(TireSideTypes, SpareTires);
         }
     }
 }

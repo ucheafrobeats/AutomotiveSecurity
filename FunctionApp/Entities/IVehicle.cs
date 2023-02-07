@@ -16,7 +16,7 @@ namespace AutomotiveWorld.Entities
 
         Task<bool> IsAvailable();
 
-        Task AddDistance(double kilometers);
+        Task UpdateTrip(double kilometers);
 
         Task Assign(Assignment assignment);
 

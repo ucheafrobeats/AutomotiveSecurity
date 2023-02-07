@@ -1,4 +1,4 @@
-﻿using AutomotiveWorld.Models;
+﻿using AutomotiveWorld.Models.Telemetry;
 using AutomotiveWorld.Network;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Logging;
@@ -18,7 +18,7 @@ namespace AutomotiveWorld.Entities
         protected AzureLogAnalyticsClient AzureLogAnalyticsClient;
 
         [JsonIgnore]
-        private static Random Rand = new();
+        protected static readonly Random Rand = new();
 
         [JsonProperty("id")]
         public string Id { get; set; }
@@ -38,11 +38,11 @@ namespace AutomotiveWorld.Entities
             return Task.CompletedTask;
         }
 
-        public async Task SendTelemetry(string entityId)
+        public async Task SendTelemetry(CustomLogTelemetry customLogTelemetry = null)
         {
-            CustomLogTelemetry customLogTelemetry = new()
+            customLogTelemetry ??= new()
             {
-                EntityId = entityId,
+                EntityId = Id,
                 JsonAsString = JsonConvert.SerializeObject(this),
                 Type = GetType().Name
             };

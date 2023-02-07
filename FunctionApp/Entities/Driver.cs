@@ -113,14 +113,14 @@ namespace AutomotiveWorld.Entities
             }
             Assignment.CurrentDistance += distance;
             Tachograph += distance;
-            Entity.Current.SignalEntity<IVehicle>(vehicleDto.Id, e => e.AddDistance(distance));
+            Entity.Current.SignalEntity<IVehicle>(vehicleDto.Id, e => e.UpdateTrip(distance));
             Logger.LogInformation($"Assignment status, id=[{Assignment.Id}], driverId=[{Assignment.DriverDto.Id}], vehicleId=[{Assignment.VehicleDto.Id}], [{Assignment.CurrentDistance}/{Assignment.TotalKilometers}]");
 
-            await SendTelemetry(Id);
+            await SendTelemetry();
 
             if (Assignment.CurrentDistance == Assignment.TotalKilometers)
             {
-                Logger.LogInformation($"Finalizing assignment id=[{Assignment}], driverId=[{Assignment.DriverDto.Id}], vehicleId=[{Assignment.VehicleDto.Id}]");
+                Logger.LogInformation($"Finalizing assignment id=[{Assignment.Id}], driverId=[{Assignment.DriverDto.Id}], vehicleId=[{Assignment.VehicleDto.Id}]");
                 Entity.Current.SignalEntity<IDriver>(Id, e => e.StopDriving());
                 return false;
             }

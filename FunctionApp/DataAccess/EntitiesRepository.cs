@@ -68,7 +68,7 @@ namespace AutomotiveWorld.DataAccess
 
         public async Task<TDto> GetFirstAvailable<TEntity, TDto>(IDurableEntityClient client, int pageSize = 100, bool fetchState = true)
             where TEntity : EntityBase
-            where TDto : DtoBase
+            where TDto : EntityDtoBase
         {
             TDto dto = null;
 

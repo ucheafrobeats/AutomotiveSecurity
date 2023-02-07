@@ -8,7 +8,7 @@ using System.Collections.Generic;
 namespace AutomotiveWorld.DataAccess
 {
     [JsonObject(MemberSerialization.OptIn)]
-    public class VehicleDto : DtoBase
+    public class VehicleDto : EntityDtoBase
     {
         [JsonProperty("parts")]
         public Dictionary<VehiclePartType, object> Parts = new();
@@ -40,6 +40,9 @@ namespace AutomotiveWorld.DataAccess
 
         [JsonProperty("trimLevel")]
         public string TrimLevel { get; set; }
+
+        [JsonProperty("vehicleType")]
+        public string VehicleType { get; set; }
 
         [JsonProperty("year", Required = Required.Always)]
         public int Year { get; set; }

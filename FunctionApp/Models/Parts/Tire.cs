@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
 
 namespace AutomotiveWorld.Models.Parts
 {
@@ -9,5 +10,9 @@ namespace AutomotiveWorld.Models.Parts
 
         [JsonProperty("pressure", Required = Required.Always)]
         public int Pressure { get; set; }
+
+        [JsonProperty("side", Required = Required.Always)]
+        [JsonConverter(typeof(StringEnumConverter))]
+        public TireSideType Side { get; set; }
     }
 }

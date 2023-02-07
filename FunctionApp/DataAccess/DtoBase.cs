@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 namespace AutomotiveWorld.DataAccess
 {
     [JsonObject(MemberSerialization.OptIn)]
-    public abstract class DtoBase
+    public abstract class EntityDtoBase
     {
         [JsonProperty("id")]
         public string Id { get; set; }

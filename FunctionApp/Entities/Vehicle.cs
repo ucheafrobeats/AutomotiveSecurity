@@ -1,6 +1,8 @@
-﻿using AutomotiveWorld.DataAccess;
+﻿using AutomotiveWorld.Builders;
+using AutomotiveWorld.DataAccess;
 using AutomotiveWorld.Models;
 using AutomotiveWorld.Models.Parts;
+using AutomotiveWorld.Models.Telemetry;
 using AutomotiveWorld.Network;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
@@ -11,6 +13,8 @@ using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
+using System.Reflection;
+using System.Runtime.ConstrainedExecution;
 using System.Threading.Tasks;
 
 namespace AutomotiveWorld.Entities
@@ -48,6 +52,9 @@ namespace AutomotiveWorld.Entities
 
         [JsonProperty("trimLevel")]
         public string TrimLevel { get; set; }
+
+        [JsonProperty("vehicleType")]
+        public string VehicleType { get; set; }
 
         [JsonProperty("year", Required = Required.Always)]
         public int Year { get; set; }
@@ -88,7 +95,6 @@ namespace AutomotiveWorld.Entities
 
                 part = (value as JObject).ToObject<T>();
                 return true;
-
             }
 
             return false;
@@ -107,6 +113,7 @@ namespace AutomotiveWorld.Entities
             SerialNumber = vehicleDto.SerialNumber;
             Style = vehicleDto.Style;
             TrimLevel = vehicleDto.TrimLevel;
+            VehicleType = vehicleDto.VehicleType;
             Year = vehicleDto.Year;
 
             return Task.CompletedTask;
@@ -116,15 +123,48 @@ namespace AutomotiveWorld.Entities
         {
             Assignment = assignment;
 
-            Logger.LogInformation($"Vehicle as been assigned, assignmentId=[{assignment.Id}], driverId=[{assignment.DriverDto.Id}], vehicleId=[{assignment.VehicleDto.Id}]");
+            Logger.LogInformation($"Vehicle has been assigned, assignmentId=[{assignment.Id}], driverId=[{assignment.DriverDto.Id}], vehicleId=[{assignment.VehicleDto.Id}]");
             return Task.CompletedTask;
         }
 
-        public async Task AddDistance(double kilometers)
+        public async Task UpdateTrip(double kilometers)
         {
             Kilometers += kilometers;
 
-            await SendTelemetry(Id);
+            await SimulateTires();
+
+            await SendTelemetry();
+        }
+
+        private async Task SimulateTires()
+        {
+            if (TryGetPart(VehiclePartType.Tires, out Tires tires))
+            {
+                foreach (PropertyInfo tireProperty in tires.GetType().GetProperties())
+                {
+                    Tire tire = (Tire)tires.GetType().GetProperty(tireProperty.Name).GetValue(tires, null);
+
+                    if (tire is null)
+                    {
+                        continue;
+                    }
+
+                    if (tireProperty.Name.Equals(TireSideType.Spare.ToString()))
+                    {
+                        tire.Pressure -= Rand.NextDouble() < 0.01 ? 1 : 0;
+                    }
+                    else
+                    {
+                        tire.Pressure -= Rand.NextDouble() < 0.05 ? 1 : 0;
+                    }
+
+                    tire.Year -= Rand.NextDouble() < 0.1 ? 1 : 0;
+
+                    await ValidateAndAlertTire(tire);
+                }
+
+                Parts[VehiclePartType.Tires] = tires;
+            }
         }
 
         public Task StartEngine()
@@ -159,6 +199,32 @@ namespace AutomotiveWorld.Entities
             Logger.LogInformation($"Vehicle unassign, driverId=[{Assignment.DriverDto.Id}], vehicleId=[{Assignment.VehicleDto.Id}]");
             Assignment = null;
             return Task.CompletedTask;
+        }
+
+        private async Task ValidateAndAlertTire(Tire tire)
+        {
+            PsiSpec psiSpec = VehicleFactory.GetPsiSpec(VehicleType);
+
+            if ((tire.Side == TireSideType.Spare && (tire.Pressure < VehicleBuilder.SpareTierMinPressure || tire.Year < VehicleBuilder.SpareTierMinYearOffset)) ||
+                (tire.Side != TireSideType.Spare && (tire.Pressure < psiSpec.MinValue || tire.Pressure > psiSpec.MaxValue || tire.Year < VehicleBuilder.TierMinYearOffset)))
+            {
+                Logger.LogInformation($"Tire required maintenance, vehicleId=[{Id}], side=[{tire.Side}], year=[{tire.Year}], pressure=[{tire.Pressure}]");
+
+                MaintenanceTelemetryPayload maintenanceTelemetryPayload = new()
+                {
+                    Tire = tire,
+                    PsiSpec = psiSpec
+                };
+
+                CustomLogTelemetry customLogTelemetry = new()
+                {
+                    EntityId = Id,
+                    JsonAsString = JsonConvert.SerializeObject(maintenanceTelemetryPayload),
+                    Type = AlertTelemetryType.Maintenance.ToString()
+                };
+
+                await SendTelemetry(customLogTelemetry);
+            }
         }
 
 

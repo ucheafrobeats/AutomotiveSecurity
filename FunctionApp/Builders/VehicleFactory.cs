@@ -10,30 +10,32 @@ namespace AutomotiveWorld.Builders
 
         public static VehicleDto Create(Vin vin)
         {
-            VehicleBuilder vehicleBuilder;
+            PsiSpec psiSpec = GetPsiSpec(vin.VehicleType);
 
-            switch (vin.VehicleType)
+            VehicleBuilder vehicleBuilder = vin.VehicleType switch
             {
-                case string a when a.Contains("Scooter"):
-                    vehicleBuilder = new ScooterBuilder(vin);
-                    break;
-                case string a when a.Contains("Car"):
-                    vehicleBuilder = new CarBuilder(vin);
-                    break;
-                case string a when a.Contains("Motor"):
-                    vehicleBuilder = new MotorCycleBuilder(vin);
-                    break;
-                case string a when a.Contains("Truck"):
-                    vehicleBuilder = new TruckBuilder(vin);
-                    break;
-                default:
-                    vehicleBuilder = new GenericVehicleBuilder(vin);
-                    break;
-            }
-
+                string a when a.Contains("Scooter") => new ScooterBuilder(vin, psiSpec),
+                string a when a.Contains("Car") => new CarBuilder(vin, psiSpec),
+                string a when a.Contains("Motor") => new MotorCycleBuilder(vin, psiSpec),
+                string a when a.Contains("Truck") => new TruckBuilder(vin, psiSpec),
+                _ => new GenericVehicleBuilder(vin, psiSpec)
+            };
             vehicleBuilder.Build();
 
             return vehicleBuilder.VehicleDto;
         }
+
+        public static PsiSpec GetPsiSpec(string vehicleType)
+        {
+            return vehicleType switch
+            {
+                string a when a.Contains("Scooter") => new PsiSpec(40, 50),
+                string a when a.Contains("Car") => new PsiSpec(32, 38),
+                string a when a.Contains("Motor") => new PsiSpec(28, 40),
+                string a when a.Contains("Truck") => new PsiSpec(32, 38),
+                _ => new PsiSpec(32, 38),
+            };
+        }
+
     }
 }

@@ -1,11 +1,6 @@
 ﻿using AutomotiveWorld.DataAccess;
 using RandomNameGeneratorLibrary;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.Intrinsics.Arm;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace AutomotiveWorld.Builders
 {
@@ -18,11 +13,12 @@ namespace AutomotiveWorld.Builders
         public static DriverDto GenerateDriverDto()
         {
             string id = PinGenerator(10);
-            return new()
+            DriverDto driverDto = new()
             {
                 Id = id,
                 Name = PersonNameGenerator.GenerateRandomFirstAndLastName()
             };
+            return driverDto;
         }
 
         private static string PinGenerator(int digits)

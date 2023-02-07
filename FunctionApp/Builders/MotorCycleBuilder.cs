@@ -6,23 +6,19 @@ namespace AutomotiveWorld.Builders
 {
     class MotorCycleBuilder : VehicleBuilder
     {
-        private const int PsiMinValue = 28;
-
-        private const int PsiMaxValue = 40;
-
         private static readonly TireSideType[] TireSideTypes = {
             TireSideType.Front,
             TireSideType.Rear
         };
 
-        public MotorCycleBuilder(Vin vin)
-            : base(vin)
+        public MotorCycleBuilder(Vin vin, PsiSpec psiSpec)
+            : base(vin, psiSpec)
         {
         }
 
         public override void BuildTires()
         {
-            base.BuildTires(TireSideTypes, PsiMinValue, PsiMaxValue);
+            base.BuildTires(TireSideTypes);
         }
     }
 }

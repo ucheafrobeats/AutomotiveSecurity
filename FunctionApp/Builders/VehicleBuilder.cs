@@ -13,17 +13,22 @@ namespace AutomotiveWorld.Builders
 
         private static readonly Color[] Colors = (Color[])Enum.GetValues(typeof(Color));
 
-        private const int TierMinYearOffset = 3;
+        public const int TierMinYearOffset = 3;
 
-        private const int SpareTierMinYearOffset = 5;
+        public const int SpareTierMinYearOffset = 5;
+
+        public const int SpareTierMinPressure = 60;
 
         public VehicleDto VehicleDto { get; private set; }
 
         public Vin Vin { get; private set; }
 
-        public VehicleBuilder(Vin vin)
+        public PsiSpec PsiSpec { get; private set; }
+
+        public VehicleBuilder(Vin vin, PsiSpec psiSpec)
         {
             Vin = vin;
+            PsiSpec = psiSpec;
             VehicleDto = new VehicleDto()
             {
                 Id = vin.Value,
@@ -32,6 +37,7 @@ namespace AutomotiveWorld.Builders
                 SerialNumber = vin.SerialNumber,
                 Style = vin.BodyClass,
                 TrimLevel = vin.Trim,
+                VehicleType = vin.VehicleType,
                 Year = vin.ModelYear,
             };
         }
@@ -70,7 +76,7 @@ namespace AutomotiveWorld.Builders
             VehicleDto[VehiclePartType.Engine] = engine;
         }
 
-        protected virtual void BuildTires(TireSideType[] tireSideTypes, int psiMinValue, int psiMaxValue, int spareTires = 0)
+        protected virtual void BuildTires(TireSideType[] tireSideTypes, int spareTires = 0)
         {
             Tires tires = new();
 
@@ -78,8 +84,10 @@ namespace AutomotiveWorld.Builders
             {
                 Tire tire = new()
                 {
-                    Pressure = Rand.Next(psiMinValue, psiMaxValue),
-                    Year = Rand.Next(DateTime.Now.Year - TierMinYearOffset, DateTime.Now.Year)
+                    Pressure = Rand.Next(PsiSpec.MinValue, PsiSpec.MaxValue),
+                    Year = Rand.Next(DateTime.Now.Year - TierMinYearOffset, DateTime.Now.Year),
+                    Side = tireSideType
+
                 };
 
                 typeof(Tires).GetProperty($"{tireSideType}").SetValue(tires, tire);
@@ -89,8 +97,9 @@ namespace AutomotiveWorld.Builders
             {
                 tires.Spare = new Tire()
                 {
-                    Pressure = 60,
-                    Year = Rand.Next(DateTime.Now.Year - SpareTierMinYearOffset, DateTime.Now.Year)
+                    Pressure = SpareTierMinPressure,
+                    Year = Rand.Next(DateTime.Now.Year - SpareTierMinYearOffset, DateTime.Now.Year),
+                    Side = TireSideType.Spare
                 };
             }
 

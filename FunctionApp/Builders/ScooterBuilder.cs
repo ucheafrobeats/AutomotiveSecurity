@@ -15,13 +15,13 @@ namespace AutomotiveWorld.Builders
             TireSideType.Rear
         };
 
-        public ScooterBuilder(Vin vin) : base(vin)
+        public ScooterBuilder(Vin vin, PsiSpec psiSpec) : base(vin, psiSpec)
         {
         }
 
         public override void BuildTires()
         {
-            base.BuildTires(TireSideTypes, PsiMinValue, PsiMaxValue);
+            base.BuildTires(TireSideTypes);
         }
     }
 }
