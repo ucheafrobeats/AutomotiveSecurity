@@ -34,6 +34,7 @@ using System.Reflection;
 using AutomotiveWorld.AzureClients;
 using AutomotiveWorld.DataAccess;
 using Microsoft.AspNetCore.JsonPatch.Operations;
+using static Microsoft.AspNetCore.Hosting.Internal.HostingApplication;
 
 namespace AutomotiveWorld
 {
@@ -41,9 +42,17 @@ namespace AutomotiveWorld
     {
         public const string TimerScheduleExpression = "%SimulatorScheduleExpression%";
 
+        private static readonly Random Rand = new();
+
         private const int MaxVehicles = 3;
 
         private const int MaxDrivers = 2;
+
+        private const int AssignmentTotalKilometerMinValue = 50;
+
+        private const int AssignmentTotalKilometerMaxValue = 2000;
+
+        private const int AssignmentScheduledTimeOffsetInMinutes = 1;
 
         private const int VehicleMinYear = 2018;
 
@@ -127,14 +136,17 @@ namespace AutomotiveWorld
         {
             string companyName = context.GetInput<string>();
 
-            try
+            if (!context.IsReplaying)
             {
                 Logger.LogInformation($"{nameof(FleetManagerOrchestrator)} has started");
+            }
 
+            try
+            {
                 var tasks = new List<Task<int>>
                 {
-                    context.CallActivityAsync<int>(nameof(ActivityRegisterVehicles), null),
-                    context.CallActivityAsync<int>(nameof(ActivityRegisterDrivers), null)
+                    context.CallActivityAsync<int>(nameof(ActivityAcquireVehicles), null),
+                    context.CallActivityAsync<int>(nameof(ActivityAcquireDrivers), null)
                 };
                 await Task.WhenAll(tasks);
 
@@ -157,70 +169,128 @@ namespace AutomotiveWorld
             }
         }
 
-        [FunctionName(nameof(FleetManagerEternalOrchestrationTrigger))]
-        public static async Task<HttpResponseMessage> FleetManagerEternalOrchestrationTrigger(
-            [HttpTrigger(AuthorizationLevel.Function, "get", Route = nameof(FleetManagerEternalOrchestrationTrigger))] HttpRequestMessage request,
-            [DurableClient] IDurableOrchestrationClient client)
+        [FunctionName(nameof(SimulateEventTrigger))]
+        public async Task SimulateEventTrigger(
+            [TimerTrigger("%SimulateEventTriggerScheduleExpression%", RunOnStartup = true)] TimerInfo timerInfo,
+            [DurableClient] IDurableOrchestrationClient durableOrchestrationClient,
+            [DurableClient] IDurableEntityClient durableEntityClient)
         {
-            string instanceId = "StaticIdA";
+            Array simulatorEventTypes = (SimulatorEventType[])Enum.GetValues(typeof(SimulatorEventType));
 
-            await client.StartNewAsync(nameof(FleetManagerEternalOrchestration), instanceId);
-            return client.CreateCheckStatusResponse(request, instanceId);
-        }
-
-        [FunctionName(nameof(FleetManagerEternalOrchestration))]
-        public async Task FleetManagerEternalOrchestration(
-           [OrchestrationTrigger] IDurableOrchestrationContext context)
-        {
-            for (int i = 0; i < 5; i++)
+            SimulatorEventType simulatorEventType = (SimulatorEventType)simulatorEventTypes.GetValue(Rand.Next(simulatorEventTypes.Length));
+            switch (simulatorEventType)
             {
-                // Assign next assignment
-                DriverDto driverDto = null;
-                VehicleDto vehicleDto = null;
-
-                driverDto = await context.CallActivityAsync<DriverDto>(nameof(ActivityGetAvailableDriver), null);
-                vehicleDto = await context.CallActivityAsync<VehicleDto>(nameof(ActivityGetAvailableVehicle), null);
-
-                if (driverDto is null || vehicleDto is null)
-                {
-
-                    string availabilityMessage = driverDto is null ? "no available Driver" : "no available Vehicle";
-                    Logger.LogInformation($"Cannot assign new task, {availabilityMessage}");
+                case SimulatorEventType.AcquireDriver:
+                    await AcquireDriver(durableEntityClient);
                     break;
-                }
-
-                EntityId driverEntityId = new(nameof(Driver), driverDto.Id);
-                EntityId vehicleEntity = new(nameof(Vehicle), vehicleDto.Id);
-
-                IDriver driverProxy = context.CreateEntityProxy<IDriver>(driverEntityId);
-                IVehicle vehicleProxy = context.CreateEntityProxy<IVehicle>(vehicleEntity);
-
-                using (await context.LockAsync(driverEntityId, vehicleEntity))
-                {
+                case SimulatorEventType.AcquireVehicle:
+                    await AcquireVehicle(durableEntityClient);
+                    break;
+                case SimulatorEventType.NewAssignment:
                     Assignment assignment = new()
                     {
-                        DriverDto = driverDto,
-                        VehicleDto = vehicleDto,
-                        TotalKilometers = 100,
-                        ScheduledTime = context.CurrentUtcDateTime.AddSeconds(30)
+                        TotalKilometers = Rand.Next(AssignmentTotalKilometerMinValue, AssignmentTotalKilometerMaxValue),
+                        ScheduledTime = DateTime.UtcNow.AddMinutes(AssignmentScheduledTimeOffsetInMinutes)
                     };
 
-                    await driverProxy.Assign(assignment);
-                    await vehicleProxy.Assign(assignment);
-                }
+                    var instanceId = assignment.Id;
 
-                DateTime scheduledTimeUtc = context.CurrentUtcDateTime.AddMinutes(1);
-                context.SignalEntity(driverEntityId, scheduledTimeUtc, nameof(Driver.StartDriving));
+                    await durableOrchestrationClient.StartNewAsync(nameof(FleetManagerAssignOrchestrator), instanceId, assignment);
+                    break;
             }
-
-            DateTime dueTime = context.CurrentUtcDateTime.AddMinutes(1);
-            await context.CreateTimer(dueTime, CancellationToken.None);
-
-            context.ContinueAsNew(null);
         }
 
-        [FunctionName(nameof(ActivityRegisterDrivers))]
-        public async Task<int> ActivityRegisterDrivers(
+        //[FunctionName(nameof(FleetManagerEternalOrchestrationTrigger))]
+        //public static async Task<HttpResponseMessage> FleetManagerEternalOrchestrationTrigger(
+        //    [HttpTrigger(AuthorizationLevel.Function, "get", Route = nameof(FleetManagerEternalOrchestrationTrigger))] HttpRequestMessage request,
+        //    [DurableClient] IDurableOrchestrationClient client)
+        //{
+        //    Assignment assignment = new()
+        //    {
+        //        TotalKilometers = 100,
+        //        ScheduledTime = DateTime.UtcNow.AddMinutes(3)
+        //    };
+
+        //    var instanceId = assignment.Id;
+
+        //    await client.StartNewAsync(nameof(FleetManagerAssignOrchestrator), instanceId, assignment);
+        //    return client.CreateCheckStatusResponse(request, instanceId);
+        //}
+
+        [FunctionName(nameof(FleetManagerAssignOrchestrator))]
+        public async Task FleetManagerAssignOrchestrator(
+           [OrchestrationTrigger] IDurableOrchestrationContext context)
+        {
+            Assignment assignment = context.GetInput<Assignment>();
+
+            if (!context.IsReplaying)
+            {
+                Logger.LogInformation($"{nameof(FleetManagerAssignOrchestrator)} started, assignmentId=[{assignment.Id}]");
+            }
+
+            DriverDto driverDto = null;
+            VehicleDto vehicleDto = null;
+
+            driverDto = await context.CallActivityAsync<DriverDto>(nameof(ActivityGetAvailableDriver), null);
+            vehicleDto = await context.CallActivityAsync<VehicleDto>(nameof(ActivityGetAvailableVehicle), null);
+
+            if (driverDto is null || vehicleDto is null)
+            {
+                if (!context.IsReplaying)
+                {
+                    string availabilityMessage = driverDto is null ? "no available Driver" : "no available Vehicle";
+                    Logger.LogInformation($"Cannot assign task, {availabilityMessage}, assignmentId=[{assignment.Id}]");
+                }
+
+                DateTime dueTime = context.CurrentUtcDateTime.AddMinutes(1);
+                await context.CreateTimer(dueTime, CancellationToken.None);
+
+                context.ContinueAsNew(assignment);
+                return;
+            }
+
+            EntityId driverEntityId = new(nameof(Driver), driverDto.Id);
+            EntityId vehicleEntity = new(nameof(Vehicle), vehicleDto.Id);
+
+            IDriver driverProxy = context.CreateEntityProxy<IDriver>(driverEntityId);
+            IVehicle vehicleProxy = context.CreateEntityProxy<IVehicle>(vehicleEntity);
+
+            using (await context.LockAsync(driverEntityId, vehicleEntity))
+            {
+                assignment.DriverDto = driverDto;
+                assignment.VehicleDto = vehicleDto;
+
+                // FIXME Assign must return bool to know if assignment is null TryAssign, and enqueue assignment otherwise
+                await driverProxy.Assign(assignment);
+                await vehicleProxy.Assign(assignment);
+            }
+
+            context.SignalEntity(driverEntityId, assignment.ScheduledTime, nameof(Driver.StartDriving));
+
+            Logger.LogInformation($"{nameof(FleetManagerAssignOrchestrator)} finished successfully, assignmentId=[{assignment.Id}]");
+        }
+
+        private async Task AcquireDriver(IDurableEntityClient client)
+        {
+            DriverDto driverDto = DriverGenerator.GenerateDriverDto();
+
+            await client.SignalEntityAsync<IDriver>(driverDto.Id, proxy => proxy.Create(driverDto));
+
+            Logger.LogInformation($"Acquired driver, id=[{driverDto.Id}]");
+        }
+
+        private async Task AcquireVehicle(IDurableEntityClient client)
+        {
+            Vin vin = await VinGenerator.Next(VehicleMinYear, DateTime.Now.Year);
+            VehicleDto vehicleDto = VehicleFactory.Create(vin);
+
+            await client.SignalEntityAsync<IVehicle>(vin.Value, proxy => proxy.Create(vehicleDto));
+
+            Logger.LogInformation($"Acquired vehicle, id=[{vehicleDto.Id}]");
+        }
+
+        [FunctionName(nameof(ActivityAcquireDrivers))]
+        public async Task<int> ActivityAcquireDrivers(
             [ActivityTrigger] IDurableActivityContext context,
             [DurableClient] IDurableEntityClient client)
         {
@@ -228,19 +298,14 @@ namespace AutomotiveWorld
 
             for (int i = driversCount; i < MaxDrivers; i++)
             {
-                DriverDto driverDto = DriverGenerator.GenerateDriverDto();
-
-                await client.SignalEntityAsync<IDriver>(driverDto.Id, proxy => proxy.Create(driverDto));
-
-                Logger.LogInformation($"Registered driver, id=[{driverDto.Id}]");
+                await AcquireDriver(client);
             }
 
             return 0;
         }
 
-
-        [FunctionName(nameof(ActivityRegisterVehicles))]
-        public async Task<int> ActivityRegisterVehicles(
+        [FunctionName(nameof(ActivityAcquireVehicles))]
+        public async Task<int> ActivityAcquireVehicles(
             [ActivityTrigger] IDurableActivityContext context,
             [DurableClient] IDurableEntityClient client)
         {
@@ -248,12 +313,7 @@ namespace AutomotiveWorld
 
             for (int i = vehiclesCount; i < MaxVehicles; i++)
             {
-                Vin vin = await VinGenerator.Next(VehicleMinYear, DateTime.Now.Year);
-                VehicleDto vehicleDto = VehicleFactory.Create(vin);
-
-                await client.SignalEntityAsync<IVehicle>(vin.Value, proxy => proxy.Create(vehicleDto));
-
-                Logger.LogInformation($"Registered vehicle, id=[{vehicleDto.Id}]");
+                await AcquireVehicle(client);
             }
 
             return 0;

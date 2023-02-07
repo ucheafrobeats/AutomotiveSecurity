@@ -149,18 +149,17 @@ namespace AutomotiveWorld.Entities
             return Task.CompletedTask;
         }
 
-        public async Task Unassign()
+        public Task Unassign()
         {
             if (Assignment is null)
             {
                 Logger.LogWarning($"Driver has no assignment, Id=[{Id}]");
-                return;
+                return Task.CompletedTask;
             }
 
             Logger.LogInformation($"Driver unassign, driverId=[{Assignment.DriverDto.Id}], vehicleId=[{Assignment.VehicleDto.Id}]");
             Assignment = null;
-            await DurableOrchestrationClient.RaiseEventAsync("StaticIdA", "CityPlanningApproval", true);
-            return;
+            return Task.CompletedTask;
         }
 
         [FunctionName(nameof(Driver))]
