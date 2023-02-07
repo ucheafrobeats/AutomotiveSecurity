@@ -22,6 +22,8 @@ namespace AutomotiveWorld.Entities
 
         Task StopDriving();
 
+        Task<bool> IsAvailable();
+
         Task Delete();
     }
 }

@@ -35,7 +35,7 @@ namespace AutomotiveWorld.Entities
         public Assignment Assignment { get; set; }
 
         [JsonProperty("isAvailable")]
-        public bool IsAvailable { get { return Assignment is null; } }
+        public bool _isAvailable { get { return Assignment is null; } }
 
         public Driver(
             ILogger<Driver> logger,
@@ -47,6 +47,11 @@ namespace AutomotiveWorld.Entities
         {
             EntitiesRepository = entitiesRepository;
             DurableEntityClient = durableEntityClient;
+        }
+
+        public Task<bool> IsAvailable()
+        {
+            return Task.FromResult(_isAvailable);
         }
 
         public Task Create(DriverDto driverDto)
@@ -61,6 +66,7 @@ namespace AutomotiveWorld.Entities
         {
             Assignment = assignment;
 
+            Logger.LogInformation($"Driver has been assigned, assignmentId=[{assignment.Id}], driverId=[{assignment.DriverDto.Id}], vehicleId=[{assignment.VehicleDto.Id}]");
             return Task.CompletedTask;
         }
 

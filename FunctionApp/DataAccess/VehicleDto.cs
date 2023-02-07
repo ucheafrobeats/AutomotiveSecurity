@@ -44,9 +44,6 @@ namespace AutomotiveWorld.DataAccess
         [JsonProperty("year", Required = Required.Always)]
         public int Year { get; set; }
 
-        [JsonProperty("isAvailable")]
-        public bool IsAvailable { get; set; } = true;
-
         public object this[VehiclePartType key]
         {
             get { return Parts.TryGetValue(key, out object value) ? value : null; }

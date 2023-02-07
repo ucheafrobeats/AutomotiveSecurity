@@ -14,6 +14,8 @@ namespace AutomotiveWorld.Entities
 
         Task TurnOffEngine();
 
+        Task<bool> IsAvailable();
+
         Task AddDistance(double kilometers);
 
         Task Assign(Assignment assignment);

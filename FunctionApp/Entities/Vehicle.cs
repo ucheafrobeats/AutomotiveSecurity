@@ -56,7 +56,7 @@ namespace AutomotiveWorld.Entities
         public Assignment Assignment { get; set; }
 
         [JsonProperty("isAvailable")]
-        public bool IsAvailable { get { return Assignment is null; } }
+        public bool _isAvailable { get { return Assignment is null; } }
 
         public Vehicle(
             ILogger<Vehicle> logger,
@@ -67,6 +67,11 @@ namespace AutomotiveWorld.Entities
         }
 
         public string Vin { get { return Id; } }
+
+        public Task<bool> IsAvailable()
+        {
+            return Task.FromResult(_isAvailable);
+        }
 
         public object this[VehiclePartType key]
         {
@@ -111,6 +116,7 @@ namespace AutomotiveWorld.Entities
         {
             Assignment = assignment;
 
+            Logger.LogInformation($"Vehicle as been assigned, assignmentId=[{assignment.Id}], driverId=[{assignment.DriverDto.Id}], vehicleId=[{assignment.VehicleDto.Id}]");
             return Task.CompletedTask;
         }
 

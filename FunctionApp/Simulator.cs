@@ -138,7 +138,8 @@ namespace AutomotiveWorld
                 };
                 await Task.WhenAll(tasks);
 
-                await context.CallSubOrchestratorAsync(nameof(FleetManagerAssignSubOrchestrator), nameof(FleetManagerAssignSubOrchestrator), null);
+                //Logger.LogDebug($"Calling {nameof(FleetManagerAssignSubOrchestrator)} function");
+                //await context.CallSubOrchestratorAsync(nameof(FleetManagerAssignSubOrchestrator), nameof(FleetManagerAssignSubOrchestrator), null);
 
                 Logger.LogInformation($"{nameof(FleetManagerOrchestrator)} finished successfully");
             }
@@ -156,51 +157,65 @@ namespace AutomotiveWorld
             }
         }
 
-        [FunctionName(nameof(FleetManagerAssignSubOrchestrator))]
-        public async Task FleetManagerAssignSubOrchestrator(
+        [FunctionName(nameof(FleetManagerEternalOrchestrationTrigger))]
+        public static async Task<HttpResponseMessage> FleetManagerEternalOrchestrationTrigger(
+            [HttpTrigger(AuthorizationLevel.Function, "get", Route = nameof(FleetManagerEternalOrchestrationTrigger))] HttpRequestMessage request,
+            [DurableClient] IDurableOrchestrationClient client)
+        {
+            string instanceId = "StaticIdA";
+
+            await client.StartNewAsync(nameof(FleetManagerEternalOrchestration), instanceId);
+            return client.CreateCheckStatusResponse(request, instanceId);
+        }
+
+        [FunctionName(nameof(FleetManagerEternalOrchestration))]
+        public async Task FleetManagerEternalOrchestration(
            [OrchestrationTrigger] IDurableOrchestrationContext context)
         {
-            Logger.LogInformation($"{nameof(FleetManagerAssignSubOrchestrator)} has started");
-
-            DriverDto driverDto = null;
-            VehicleDto vehicleDto = null;
-
-            // Assign next assignment
-            driverDto = await context.CallActivityAsync<DriverDto>(nameof(ActivityGetAvailableDriver), null);
-            vehicleDto = await context.CallActivityAsync<VehicleDto>(nameof(ActivityGetAvailableVehicle), null);
-
-            if (driverDto == null && vehicleDto == null)
+            for (int i = 0; i < 5; i++)
             {
-                Logger.LogInformation($"{nameof(FleetManagerAssignSubOrchestrator)} couldn't match assignment, availableDriver=[{driverDto is null}], availableVehicle=[{vehicleDto is null}]");
-                DateTime dueTime = context.CurrentUtcDateTime.AddSeconds(10);
-                await context.CreateTimer(dueTime, CancellationToken.None);
-            }
+                // Assign next assignment
+                DriverDto driverDto = null;
+                VehicleDto vehicleDto = null;
 
-            EntityId driverEntityId = new(nameof(Driver), driverDto.Id);
-            EntityId vehicleEntity = new(nameof(Vehicle), vehicleDto.Id);
+                driverDto = await context.CallActivityAsync<DriverDto>(nameof(ActivityGetAvailableDriver), null);
+                vehicleDto = await context.CallActivityAsync<VehicleDto>(nameof(ActivityGetAvailableVehicle), null);
 
-            IDriver driverProxy = context.CreateEntityProxy<IDriver>(driverEntityId);
-            IVehicle vehicleProxy = context.CreateEntityProxy<IVehicle>(vehicleEntity);
-
-            using (await context.LockAsync(driverEntityId, vehicleEntity))
-            {
-                Assignment assignment = new()
+                if (driverDto is null || vehicleDto is null)
                 {
-                    DriverDto = driverDto,
-                    VehicleDto = vehicleDto,
-                    TotalKilometers = 100,
-                    ScheduledTime = context.CurrentUtcDateTime.AddSeconds(30)
-                };
+                    string availabilityMessage = driverDto is null ? "no available Driver" : "no available Vehicle";
+                    Logger.LogInformation($"Cannot assign new task, {availabilityMessage}");
+                    break;
+                }
 
-                await driverProxy.Assign(assignment);
-                await vehicleProxy.Assign(assignment);
+                EntityId driverEntityId = new(nameof(Driver), driverDto.Id);
+                EntityId vehicleEntity = new(nameof(Vehicle), vehicleDto.Id);
 
-                Logger.LogInformation($"Created new assignment, assignmentId=[{assignment.Id}], driverId=[{driverDto.Id}], vehicleId=[{vehicleDto.Id}]");
+                IDriver driverProxy = context.CreateEntityProxy<IDriver>(driverEntityId);
+                IVehicle vehicleProxy = context.CreateEntityProxy<IVehicle>(vehicleEntity);
+
+                using (await context.LockAsync(driverEntityId, vehicleEntity))
+                {
+                    Assignment assignment = new()
+                    {
+                        DriverDto = driverDto,
+                        VehicleDto = vehicleDto,
+                        TotalKilometers = 100,
+                        ScheduledTime = context.CurrentUtcDateTime.AddSeconds(30)
+                    };
+
+                    await driverProxy.Assign(assignment);
+                    await vehicleProxy.Assign(assignment);
+                }
+
+                DateTime scheduledTimeUtc = context.CurrentUtcDateTime.AddMinutes(1);
+                context.SignalEntity(driverEntityId, scheduledTimeUtc, nameof(Driver.StartDriving));
             }
 
-            DateTime scheduledTimeUtc = context.CurrentUtcDateTime.AddMinutes(1);
-            context.SignalEntity(driverEntityId, scheduledTimeUtc, nameof(Driver.StartDriving));
-            Logger.LogInformation($"{nameof(FleetManagerAssignSubOrchestrator)} finished successfully");
+            DateTime dueTime = context.CurrentUtcDateTime.AddMinutes(1);
+            await context.CreateTimer(dueTime, CancellationToken.None);
+
+            context.ContinueAsNew(null);
         }
 
         [FunctionName(nameof(ActivityRegisterDrivers))]
