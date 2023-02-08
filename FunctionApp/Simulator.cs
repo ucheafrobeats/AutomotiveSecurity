@@ -46,14 +46,6 @@ namespace AutomotiveWorld
 
         private const int MaxDrivers = 2;
 
-        private const int AssignmentTotalKilometerMinValue = 50;
-
-        private const int AssignmentTotalKilometerMaxValue = 2000;
-
-        private const int AssignmentScheduledTimeOffsetInMinutes = 1;
-
-        private const int VehicleMinYear = 2018;
-
         private readonly ILogger<Simulator> Logger;
 
         private readonly AzureLogAnalyticsClient AzureLogAnalyticsClient;
@@ -90,10 +82,10 @@ namespace AutomotiveWorld
 
             try
             {
-                //if (!await MicrosoftSentinelClient.AddAllDefaultRules())
-                //{
-                //    throw new Exception("Failed to create Microsoft Sentinel Rules");
-                //}
+                if (!await MicrosoftSentinelClient.AddAllDefaultRules())
+                {
+                    throw new Exception("Failed to create Microsoft Sentinel Rules");
+                }
 
                 // Check if an instance with the specified ID already exists or an existing one stopped running(completed/failed/terminated).
                 var orchestratorInstance = await client.GetStatusAsync(InstanceId);
@@ -189,8 +181,8 @@ namespace AutomotiveWorld
                 case SimulatorEventType.NewAssignment:
                     Assignment assignment = new()
                     {
-                        TotalKilometers = Rand.Next(AssignmentTotalKilometerMinValue, AssignmentTotalKilometerMaxValue),
-                        ScheduledTime = DateTime.UtcNow.AddMinutes(AssignmentScheduledTimeOffsetInMinutes)
+                        TotalKilometers = Rand.Next(Constants.Assignment.TotalKilometerMinValue, Constants.Assignment.TotalKilometerMaxValue),
+                        ScheduledTime = DateTime.UtcNow.AddMinutes(Constants.Assignment.ScheduledTimeOffsetInMinutes)
                     };
 
                     var instanceId = assignment.Id;
@@ -264,7 +256,7 @@ namespace AutomotiveWorld
 
         private async Task AcquireVehicle(IDurableEntityClient client)
         {
-            Vin vin = await VinGenerator.Next(VehicleMinYear, DateTime.Now.Year);
+            Vin vin = await VinGenerator.Next(Constants.Vehicle.MinYear, DateTime.Now.Year);
             VehicleDto vehicleDto = VehicleFactory.Create(vin);
 
             await client.SignalEntityAsync<IVehicle>(vin.Value, proxy => proxy.Create(vehicleDto));

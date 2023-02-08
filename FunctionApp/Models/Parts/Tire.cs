@@ -14,5 +14,8 @@ namespace AutomotiveWorld.Models.Parts
         [JsonProperty("side", Required = Required.Always)]
         [JsonConverter(typeof(StringEnumConverter))]
         public TireSideType Side { get; set; }
+
+        [JsonProperty("isFaulty")]
+        public bool IsFaulty { get; set; }
     }
 }

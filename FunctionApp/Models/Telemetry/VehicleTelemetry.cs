@@ -11,7 +11,10 @@ namespace AutomotiveWorld.Models.Telemetry
         [JsonProperty("jsonAsString")]
         public string JsonAsString { get; set; }
 
-        [JsonProperty("Type")]
+        [JsonProperty("type")]
         public string Type { get; set; }
+
+        [JsonProperty("subType")]
+        public string SubType { get; set; }
     }
 }

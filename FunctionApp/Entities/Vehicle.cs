@@ -13,6 +13,7 @@ using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Reflection;
 using System.Runtime.ConstrainedExecution;
 using System.Threading.Tasks;
@@ -63,7 +64,11 @@ namespace AutomotiveWorld.Entities
         public Assignment Assignment { get; set; }
 
         [JsonProperty("isAvailable")]
-        public bool _isAvailable { get { return Assignment is null; } }
+        public bool _isAvailable { get { return Assignment is null && Status == VehicleStatus.Parking; } }
+
+        [JsonProperty("status")]
+        [JsonConverter(typeof(StringEnumConverter))]
+        public VehicleStatus Status { get; set; } = VehicleStatus.Parking;
 
         public Vehicle(
             ILogger<Vehicle> logger,
@@ -92,9 +97,8 @@ namespace AutomotiveWorld.Entities
 
             if (Parts.TryGetValue(key, out object value))
             {
-
-                part = (value as JObject).ToObject<T>();
-                return true;
+                part ??= (value as JObject)?.ToObject<T>() ?? value as T;
+                return part is null ? false : true;
             }
 
             return false;
@@ -122,6 +126,7 @@ namespace AutomotiveWorld.Entities
         public Task Assign(Assignment assignment)
         {
             Assignment = assignment;
+            Status = VehicleStatus.Assigned;
 
             Logger.LogInformation($"Vehicle has been assigned, assignmentId=[{assignment.Id}], driverId=[{assignment.DriverDto.Id}], vehicleId=[{assignment.VehicleDto.Id}]");
             return Task.CompletedTask;
@@ -151,16 +156,22 @@ namespace AutomotiveWorld.Entities
 
                     if (tireProperty.Name.Equals(TireSideType.Spare.ToString()))
                     {
-                        tire.Pressure -= Rand.NextDouble() < 0.01 ? 1 : 0;
+                        tire.Pressure -= Rand.NextDouble() < Constants.SimulatorProbability.SpareTierPressureReduction ? 1 : 0;
                     }
                     else
                     {
-                        tire.Pressure -= Rand.NextDouble() < 0.05 ? 1 : 0;
+                        tire.Pressure -= Rand.NextDouble() < Constants.SimulatorProbability.NonSpareTierPressureReduction ? 1 : 0;
                     }
 
-                    tire.Year -= Rand.NextDouble() < 0.1 ? 1 : 0;
+                    tire.Year -= Rand.NextDouble() < Constants.SimulatorProbability.TierYearReduction ? 1 : 0;
 
-                    await ValidateAndAlertTire(tire);
+                    bool isFaulty = await ValidateAndAlertTire(tire);
+                    if (isFaulty)
+                    {
+                        tire.IsFaulty = true;
+
+                        MarkAsFaulty();
+                    }
                 }
 
                 Parts[VehiclePartType.Tires] = tires;
@@ -198,17 +209,39 @@ namespace AutomotiveWorld.Entities
 
             Logger.LogInformation($"Vehicle unassign, driverId=[{Assignment.DriverDto.Id}], vehicleId=[{Assignment.VehicleDto.Id}]");
             Assignment = null;
+
+            UpdateStatus();
+
             return Task.CompletedTask;
         }
 
-        private async Task ValidateAndAlertTire(Tire tire)
+        private void UpdateStatus()
         {
+            if (Status == VehicleStatus.Assigned)
+            {
+                Status = VehicleStatus.Parking;
+            }
+        }
+
+        private void MarkAsFaulty()
+        {
+            Status = VehicleStatus.Faulty;
+        }
+
+        private async Task<bool> ValidateAndAlertTire(Tire tire)
+        {
+            if (tire == null || tire.IsFaulty)
+            {
+                return true;
+            }
+
             PsiSpec psiSpec = VehicleFactory.GetPsiSpec(VehicleType);
 
-            if ((tire.Side == TireSideType.Spare && (tire.Pressure < VehicleBuilder.SpareTierMinPressure || tire.Year < VehicleBuilder.SpareTierMinYearOffset)) ||
-                (tire.Side != TireSideType.Spare && (tire.Pressure < psiSpec.MinValue || tire.Pressure > psiSpec.MaxValue || tire.Year < VehicleBuilder.TierMinYearOffset)))
+            if ((tire.Side == TireSideType.Spare && (tire.Pressure < VehicleBuilder.SpareTierMinPressure || tire.Year < DateTime.Now.Year - VehicleBuilder.SpareTierMinYearOffset)) ||
+                (tire.Side != TireSideType.Spare && (tire.Pressure < psiSpec.MinValue || tire.Pressure > psiSpec.MaxValue || tire.Year < DateTime.Now.Year - VehicleBuilder.TierMinYearOffset)))
             {
                 Logger.LogInformation($"Tire required maintenance, vehicleId=[{Id}], side=[{tire.Side}], year=[{tire.Year}], pressure=[{tire.Pressure}]");
+                tire.IsFaulty = true;
 
                 MaintenanceTelemetryPayload maintenanceTelemetryPayload = new()
                 {
@@ -220,11 +253,16 @@ namespace AutomotiveWorld.Entities
                 {
                     EntityId = Id,
                     JsonAsString = JsonConvert.SerializeObject(maintenanceTelemetryPayload),
-                    Type = AlertTelemetryType.Maintenance.ToString()
+                    Type = AlertTelemetryType.Maintenance.ToString(),
+                    SubType = nameof(Tire)
                 };
 
                 await SendTelemetry(customLogTelemetry);
+
+                return true;
             }
+
+            return false;
         }
 
 

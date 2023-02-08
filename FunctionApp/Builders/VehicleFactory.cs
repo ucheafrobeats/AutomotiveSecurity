@@ -29,11 +29,11 @@ namespace AutomotiveWorld.Builders
         {
             return vehicleType switch
             {
-                string a when a.Contains("Scooter") => new PsiSpec(40, 50),
-                string a when a.Contains("Car") => new PsiSpec(32, 38),
-                string a when a.Contains("Motor") => new PsiSpec(28, 40),
-                string a when a.Contains("Truck") => new PsiSpec(32, 38),
-                _ => new PsiSpec(32, 38),
+                string a when a.Contains("Scooter") => Constants.Vehicle.Psi.Scooter,
+                string a when a.Contains("Car") => Constants.Vehicle.Psi.Car,
+                string a when a.Contains("Motor") => Constants.Vehicle.Psi.Motor,
+                string a when a.Contains("Truck") => Constants.Vehicle.Psi.Truck,
+                _ => Constants.Vehicle.Psi.Default,
             };
         }
 
