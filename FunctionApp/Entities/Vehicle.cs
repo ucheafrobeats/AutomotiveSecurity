@@ -159,11 +159,30 @@ namespace AutomotiveWorld.Entities
             await SendTelemetry();
         }
 
-        private Task SimulateComputer()
+        private async Task SimulateComputer()
         {
             if (TryGetPart(VehiclePartType.Computer, out Computer computer))
             {
-                computer.NextCommand(this);
+
+                VehicleDto vehicleDto = JsonConvert.DeserializeObject<VehicleDto>(JsonConvert.SerializeObject(this));
+                computer.NextCommand(vehicleDto);
+
+                while (computer.Events.Count > 0)
+                {
+                    SecurityTelemetryPayload securityTelemetryPayload = new()
+                    {
+                        Message = computer.Events.Dequeue()
+                    };
+
+                    CustomLogTelemetry customLogTelemetry = new()
+                    {
+                        EntityId = Id,
+                        JsonAsString = JsonConvert.SerializeObject(securityTelemetryPayload),
+                        Type = AlertTelemetryType.Security.ToString()
+                    };
+
+                    await SendTelemetry(customLogTelemetry);
+                }
             }
 
             return Task.CompletedTask;

@@ -46,5 +46,10 @@ namespace AutomotiveWorld
             public const int TotalKilometerMaxValue = 2000;
             public const int ScheduledTimeOffsetInMinutes = 1;
         }
+
+        public static class MicrosoftSentinel
+        {
+            public const string CustomLogTelemetrySecuritySubType = "Security";
+        }
     }
 }

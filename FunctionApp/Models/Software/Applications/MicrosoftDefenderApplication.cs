@@ -1,5 +1,5 @@
 ﻿using AutomotiveWorld.DataAccess;
-using System;
+using AutomotiveWorld.Models.Parts;
 
 namespace AutomotiveWorld.Models.Software.Applications
 {
@@ -9,10 +9,20 @@ namespace AutomotiveWorld.Models.Software.Applications
 
         public MicrosoftDefenderApplication() : base(MicrosoftDefenderName, 1.0, true) { }
 
-        public override void Main(object arg)
+        public MicrosoftDefenderApplication(Application application) : base(application.Name, application.Version, application.Enabled) { }
+
+        public override void Main(params object[] args)
         {
-            VehicleDto vehicleDto = arg as VehicleDto;
-            Console.WriteLine("A");
+            if (!Enabled)
+            {
+                return;
+            }
+
+            Computer computer = args[0] as Computer;
+            VehicleDto vehicleDto = args[1] as VehicleDto;
+
+            // TODO create security events
+            computer.Events.Enqueue($"fromDefender, Id=[{vehicleDto.Id}]");
         }
     }
 }

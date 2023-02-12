@@ -1,8 +1,7 @@
-﻿using AutomotiveWorld.Models.Software;
+﻿using AutomotiveWorld.DataAccess;
+using AutomotiveWorld.Models.Software;
 using AutomotiveWorld.Models.Software.Applications;
-using Google.Protobuf.WellKnownTypes;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using System.Collections.Generic;
 
 namespace AutomotiveWorld.Models.Parts
@@ -33,18 +32,23 @@ namespace AutomotiveWorld.Models.Parts
         [JsonProperty("memory")]
         public Memory Memory { get; set; }
 
-        public void NextCommand(object arg)
+        [JsonProperty("events")]
+        public Queue<string> Events { get; set; } = new();
+
+        public void NextCommand(params object[] args)
         {
             foreach (Application application in Applications)
             {
                 if (MicrosoftDefenderApplication.MicrosoftDefenderName.Equals(application.Name))
                 {
+                    VehicleDto vehicleDto = (VehicleDto)args[0];
                     // FIXME cast is needed because durable entities serialization doesn't support abstract class by default
-                    ((MicrosoftDefenderApplication)application).Main(arg);
+                    MicrosoftDefenderApplication microsoftDefenderApplication = new(application);
+                    microsoftDefenderApplication.Main(this, vehicleDto);
                 }
                 else
                 {
-                    application.Main(arg);
+                    application.Main(args);
                 }
 
             }

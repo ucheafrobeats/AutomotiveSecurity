@@ -9,7 +9,7 @@ namespace AutomotiveWorld.Models.Software.Applications
         {
         }
 
-        public override void Main(object arg)
+        public override void Main(params object[] args)
         {
             Console.WriteLine("Hello World!");
         }

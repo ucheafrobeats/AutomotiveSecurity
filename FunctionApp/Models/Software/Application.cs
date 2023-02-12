@@ -23,7 +23,7 @@ namespace AutomotiveWorld.Models.Software
             Enabled = enabled;
         }
 
-        public virtual void Main(object arg)
+        public virtual void Main(params object[] args)
         {
             if (Enabled)
             {
