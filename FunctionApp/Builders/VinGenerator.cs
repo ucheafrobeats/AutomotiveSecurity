@@ -6,9 +6,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Mime;
+using System.Reactive.Joins;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Xml.Linq;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace AutomotiveWorld.Builders
 {
@@ -17,6 +20,8 @@ namespace AutomotiveWorld.Builders
         private static readonly string NhtsaUrl = "https://vpic.nhtsa.dot.gov/api/vehicles/decodevin/{0}?format=json";
 
         private static readonly Random Rand = new();
+
+        private static readonly Regex NhtsaPossibleValuesRegex = new(@"\((\w+):(\w+)\)", RegexOptions.Compiled);
 
         private static readonly string AllCharacters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 
@@ -155,7 +160,19 @@ namespace AutomotiveWorld.Builders
           { "5N1", "Nissan" },
           { "5NP", "Hyundai" },
           { "5T", "Toyota - trucks" },
-          { "5YJ", "Tesla, Inc." }
+          { "5YJ", "Tesla, Inc." },
+          { "LB2", "Geely" },
+          { "7FC", "Rivian" },
+          { "7PD", "Rivian" },
+          { "50E", "Lucid Motors" }
+        };
+
+        private static readonly IDictionary<string, string> ElectricVehicleManufacturerMap = new Dictionary<string, string>()
+        {
+          { "5YJ", "Tesla, Inc." },
+          { "7FC", "Rivian" },
+          { "7PD", "Rivian" },
+          { "50E", "Lucid Motors" }
         };
 
         private readonly ILogger<VinGenerator> Logger;
@@ -184,13 +201,24 @@ namespace AutomotiveWorld.Builders
             HttpClient = httpClient;
         }
 
-        public async Task<Vin> Next(int yearMinValue, int yearMaxValue)
+        public async Task<Vin> Next(int yearMinValue, int yearMaxValue, bool electricVehicle = false)
         {
-            Vin vin = null;
+            Vin vin;
             int retry = 0;
             do
             {
-                vin = await GenerateVin(Rand.Next(yearMinValue, yearMaxValue), ManufacturerMap.ElementAt(Rand.Next(0, ManufacturerMap.Count)).Value);
+                string make;
+
+                if (electricVehicle)
+                {
+                    make = ElectricVehicleManufacturerMap.ElementAt(Rand.Next(0, ElectricVehicleManufacturerMap.Count)).Value;
+                }
+                else
+                {
+                    make = ManufacturerMap.ElementAt(Rand.Next(0, ManufacturerMap.Count)).Value;
+                }
+
+                vin = await GenerateVin(Rand.Next(yearMinValue, yearMaxValue), make, electricVehicle);
                 retry++;
 
                 Logger.LogDebug($"VinGenerator generated an incomplete Vin, retry=[{retry}]...");
@@ -200,9 +228,9 @@ namespace AutomotiveWorld.Builders
             return vin;
         }
 
-        public async Task<Vin> GenerateVin(int modelYear, string make)
+        public async Task<Vin> GenerateVin(int modelYear, string make, bool electricVehicle = false, string suggetedVin = null)
         {
-            string vinStr = GetVin(modelYear, make);
+            string vinStr = suggetedVin is null ? GetVin(modelYear, make, electricVehicle) : suggetedVin;
 
             var request = new HttpRequestMessage
             {
@@ -220,7 +248,37 @@ namespace AutomotiveWorld.Builders
                 .GroupBy(kvp => kvp.Key)
                 .ToDictionary(kvp => kvp.Key, kvp => kvp.First().Value);
 
-            return new Vin(vinStr, nhtsaMap);
+
+            Vin vin = new(vinStr, nhtsaMap);
+
+            if (vin.TryGetValue("Possible Values", out string possibleValues))
+            {
+                // try resolve NHTSA suggestions to provide a real Vin
+                StringBuilder newVinSb = new(vinStr);
+
+                MatchCollection matches = NhtsaPossibleValuesRegex.Matches(possibleValues);
+                foreach (Match match in matches)
+                {
+                    int index = Int32.Parse(match.Groups[1].Value);
+                    string optionalValues = match.Groups[2].Value;
+
+                    newVinSb[index - 1] = optionalValues.ElementAt(Rand.Next(0, optionalValues.Length));
+                }
+
+                string newVinStr = newVinSb.ToString();
+
+                // Try fix vin one time only
+                if (suggetedVin is null)
+                {
+                    return await GenerateVin(modelYear, make, electricVehicle, MakeValid(newVinStr));
+                }
+                else
+                {
+                    vin = new Vin(newVinStr, nhtsaMap);
+                }
+            }
+
+            return vin;
         }
 
         private static int VinCharacterToNumber(char vinChar)
@@ -249,37 +307,175 @@ namespace AutomotiveWorld.Builders
             }
         }
 
-        private static string GetVds() => Enumerable.Range(4, 5).Select(
-            i =>
+        private static string GetVehicleDescriptorSection(string wmi = null)
+        {
+            IEnumerable<char> values = null;
+
+            switch (wmi)
             {
-                var charSet = "";
-                switch (i)
-                {
-                    case 4:
-                        charSet = AlphaCharacters;
-                        break;
-                    case 5:
-                        charSet = AlphaCharacters;
-                        break;
-                    case 6:
-                        charSet = NumericCharacters;
-                        break;
-                    case 7:
-                        charSet = NumericCharacters;
-                        break;
-                    case 8:
-                        charSet = VinCharacters;
-                        break;
-                    default:
-                        charSet = VinCharacters;
-                        break;
-                }
-                return charSet[Rand.Next(charSet.Length)];
-            })
-            .Aggregate("", (a, b) => a + b, x => x) + Rand.Next(10).ToString();
+                case "5YJ": // Tesla
+                    values = Enumerable.Range(4, 5).Select(
+                    i =>
+                    {
+                        var charSet = "";
+                        switch (i)
+                        {
+                            case 4:
+                                charSet = "RSTXY3";
+                                break;
+                            case 5:
+                                charSet = "1ABCDEFGH";
+                                break;
+                            case 6:
+                                charSet = "12345678ABCDE";
+                                break;
+                            case 7:
+                                charSet = "1ABCDEFHSV";
+                                break;
+                            case 8:
+                                charSet = VinCharacters;
+                                break;
+                            default:
+                                charSet = VinCharacters;
+                                break;
+                        }
+                        return charSet[Rand.Next(charSet.Length)];
+                    });
+                    break;
+                case "7FC": // Rivian
+                    values = Enumerable.Range(4, 5).Select(
+                    i =>
+                    {
+                        var charSet = "";
+                        switch (i)
+                        {
+                            case 4:
+                                charSet = "T";
+                                break;
+                            case 5:
+                                charSet = "G";
+                                break;
+                            case 6:
+                                charSet = "AB";
+                                break;
+                            case 7:
+                                charSet = "A";
+                                break;
+                            case 8:
+                                charSet = "AEL";
+                                break;
+                            default:
+                                charSet = VinCharacters;
+                                break;
+                        }
+                        return charSet[Rand.Next(charSet.Length)];
+                    });
+                    break;
+                case "7PD": // Rivian
+                    values = Enumerable.Range(4, 5).Select(
+                    i =>
+                    {
+                        var charSet = "";
+                        switch (i)
+                        {
+                            case 4:
+                                charSet = "S";
+                                break;
+                            case 5:
+                                charSet = "G";
+                                break;
+                            case 6:
+                                charSet = "AB";
+                                break;
+                            case 7:
+                                charSet = "AB";
+                                break;
+                            case 8:
+                                charSet = "AEL";
+                                break;
+                            default:
+                                charSet = VinCharacters;
+                                break;
+                        }
+                        return charSet[Rand.Next(charSet.Length)];
+                    });
+                    break;
+                case "50E": // Lucid Motors
+                    values = Enumerable.Range(4, 5).Select(
+                    i =>
+                    {
+                        var charSet = "";
+                        switch (i)
+                        {
+                            case 4:
+                                charSet = "a";
+                                break;
+                            case 5:
+                                charSet = "1";
+                                break;
+                            case 6:
+                                charSet = "D";
+                                break;
+                            case 7:
+                                charSet = "A";
+                                break;
+                            case 8:
+                                charSet = "A";
+                                break;
+                            default:
+                                charSet = VinCharacters;
+                                break;
+                        }
+                        return charSet[Rand.Next(charSet.Length)];
+                    });
+                    break;
+                default:
+                    values = Enumerable.Range(4, 5).Select(
+                    i =>
+                    {
+                        var charSet = "";
+                        switch (i)
+                        {
+                            case 4:
+                                charSet = AlphaCharacters;
+                                break;
+                            case 5:
+                                charSet = AlphaCharacters;
+                                break;
+                            case 6:
+                                charSet = NumericCharacters;
+                                break;
+                            case 7:
+                                charSet = NumericCharacters;
+                                break;
+                            case 8:
+                                charSet = VinCharacters;
+                                break;
+                            default:
+                                charSet = VinCharacters;
+                                break;
+                        }
+                        return charSet[Rand.Next(charSet.Length)];
+                    });
+                    break;
+            }
 
-        private static string GetVis(int modelYear) => ModelYearToLetter(modelYear) + "A" + Rand.Next(10000000).ToString().PadLeft(6, '0');
+            return values.Aggregate("", (a, b) => a + b, x => x) + Rand.Next(10).ToString();
+        }
 
-        private static string GetVin(int modelYear, string make) => MakeValid(GetWmi(make) + GetVds() + GetVis(modelYear));
+        private static string GetVehicleIdentifierSection(int modelYear)
+        {
+            char modelYearLetter = ModelYearToLetter(modelYear);
+            string serialNumber = Rand.Next(10000000).ToString().PadLeft(6, '0');
+            return modelYearLetter + "A" + serialNumber;
+        }
+
+        private static string GetVin(int modelYear, string make, bool electricVehicle)
+        {
+            string wmi = GetWmi(make);
+            string vds = electricVehicle ? GetVehicleDescriptorSection(wmi) : GetVehicleDescriptorSection();
+            string vis = GetVehicleIdentifierSection(modelYear);
+            return MakeValid(wmi + vds + vis);
+        }
     }
 }

@@ -1,4 +1,5 @@
-﻿using AutomotiveWorld.Models.Parts;
+﻿using AutomotiveWorld.Builders;
+using AutomotiveWorld.Models.Parts;
 using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Extensions;
 using Newtonsoft.Json;
 using System;
@@ -40,7 +41,9 @@ namespace AutomotiveWorld.Models
 
         public string BodyClass { get { return TryGetValue("Body Class", out string value) ? value : null; } }
 
-        public float DisplacementL { get { return TryGetValue("Displacement (L)", out string value) ? (float)Convert.ToDouble(value) : 0; } }
+        public EngineType EngineType { get { return TryGetValue("Fuel Type - Primary", out string value) ? EngineTypeFactory.FromString(value) : EngineType.Unknown; } }
+
+        public float DisplacementL { get { return TryGetValue("Displacement (L)", out string value) ? (float)Convert.ToDouble(value) : EngineType == EngineType.BEV ? 2.0f : 0; } }
 
         public string SerialNumber { get { return Value[11..]; } }
 

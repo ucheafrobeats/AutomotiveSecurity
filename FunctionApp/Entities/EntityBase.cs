@@ -33,6 +33,8 @@ namespace AutomotiveWorld.Entities
 
         public Task Delete()
         {
+            Logger.LogInformation($"Deleting entity, id=[{Id}]");
+
             Entity.Current.DeleteState();
 
             return Task.CompletedTask;

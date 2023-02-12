@@ -1,5 +1,6 @@
 ﻿using AutomotiveWorld.DataAccess;
 using AutomotiveWorld.Models;
+using AutomotiveWorld.Models.Parts;
 using System.Threading.Tasks;
 
 namespace AutomotiveWorld.Entities
@@ -16,9 +17,13 @@ namespace AutomotiveWorld.Entities
 
         Task<bool> IsAvailable();
 
+        Task Maintenance();
+
+        Task Park();
+
         Task UpdateTrip(double kilometers);
 
-        Task Assign(Assignment assignment);
+        Task<bool> Assign(Assignment assignment);
 
         Task Unassign();
     }

@@ -7,7 +7,6 @@ using Azure.ResourceManager.SecurityInsights.Models;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
-using System.Security.Cryptography;
 using System.Threading.Tasks;
 
 namespace AutomotiveWorld.AzureClients
@@ -60,31 +59,43 @@ namespace AutomotiveWorld.AzureClients
 
         private void InitializeDefaultRules(string tableName)
         {
-            SecurityInsightsAlertRuleEntityMapping driverIdEntityMappings = new();
-            driverIdEntityMappings.EntityType = SecurityInsightsAlertRuleEntityMappingType.Account;
-            driverIdEntityMappings.FieldMappings.Add(new SecurityInsightsFieldMapping() { Identifier = "Sid", ColumnName = "DriverId" });
+            SecurityInsightsAlertRuleEntityMapping driverIdEntityMappings = new()
+            {
+                EntityType = SecurityInsightsAlertRuleEntityMappingType.Account
+            };
+            driverIdEntityMappings.FieldMappings.Add(new SecurityInsightsFieldMapping() { Identifier = "AadUserId", ColumnName = "DriverId" });
 
-            SecurityInsightsAlertRuleEntityMapping driverNameEntityMappings = new();
-            driverNameEntityMappings.EntityType = SecurityInsightsAlertRuleEntityMappingType.Account;
+            SecurityInsightsAlertRuleEntityMapping driverNameEntityMappings = new()
+            {
+                EntityType = SecurityInsightsAlertRuleEntityMappingType.Account
+            };
             driverNameEntityMappings.FieldMappings.Add(new SecurityInsightsFieldMapping() { Identifier = "FullName", ColumnName = "DriverName" });
 
-            SecurityInsightsAlertRuleEntityMapping vehicleIdEntityMappings = new();
-            vehicleIdEntityMappings.EntityType = SecurityInsightsAlertRuleEntityMappingType.File;
+            SecurityInsightsAlertRuleEntityMapping vehicleIdEntityMappings = new()
+            {
+                EntityType = SecurityInsightsAlertRuleEntityMappingType.File
+            };
             vehicleIdEntityMappings.FieldMappings.Add(new SecurityInsightsFieldMapping() { Identifier = "Name", ColumnName = "VehicleId" });
 
-            SecurityInsightsAlertRuleEntityMapping vehicleModelEntityMappings = new();
-            vehicleModelEntityMappings.EntityType = SecurityInsightsAlertRuleEntityMappingType.Host;
+            SecurityInsightsAlertRuleEntityMapping vehicleModelEntityMappings = new()
+            {
+                EntityType = SecurityInsightsAlertRuleEntityMappingType.Host
+            };
             vehicleModelEntityMappings.FieldMappings.Add(new SecurityInsightsFieldMapping() { Identifier = "FullName", ColumnName = "VehicleModel" });
 
             SecurityInsightsGroupingConfiguration groupingConfiguration = new(
                 true,
                 false,
-                TimeSpan.Parse("00:05:00"),
+                TimeSpan.Parse("05:00:00"),
                 SecurityInsightsGroupingMatchingMethod.AnyAlert);
-            SecurityInsightsIncidentConfiguration incidentConfiguration = new(true);
-            incidentConfiguration.GroupingConfiguration = groupingConfiguration;
+            groupingConfiguration.GroupByCustomDetails.Add("SubType");
+            groupingConfiguration.GroupByCustomDetails.Add("VehicleId");
+            SecurityInsightsIncidentConfiguration incidentConfiguration = new(true)
+            {
+                GroupingConfiguration = groupingConfiguration
+            };
 
-            SecurityInsightsScheduledAlertRule vehicleRequiredMaintenance = new()
+            SecurityInsightsScheduledAlertRule vehicleMaintenance = new()
             {
                 Query = $@"let Table = {tableName}_CL;
 let MaintenanceEvents = Table
@@ -111,10 +122,10 @@ let RequiredMaintenance = VehicleEvents
     | summarize arg_max(TimeGenerated, *) by entityId_s, subType_s1;
 RequiredMaintenance
 | project TimeGenerated, EntityId = entityId_s, Payload = MaintenancePayload, SubType = subType_s1, DriverId, DriverName, VehicleModel, VehicleId",
-                QueryFrequency = TimeSpan.Parse("00:05:00"),
+                QueryFrequency = TimeSpan.Parse("05:00:00"),
                 QueryPeriod = TimeSpan.Parse("05:00:00"),
-                DisplayName = $"Vehicle required maintenance",
-                Description = "",
+                DisplayName = $"Vehicle require maintenance",
+                Description = "Vehicle require maintenance by part.",
                 Severity = SecurityInsightsAlertSeverity.Low,
                 TriggerOperator = SecurityInsightsAlertRuleTriggerOperator.GreaterThan,
                 TriggerThreshold = 0,
@@ -125,14 +136,16 @@ RequiredMaintenance
                 IsSuppressionEnabled = false,
                 AlertDetailsOverride = new SecurityInsightsAlertDetailsOverride()
                 {
-                    AlertDisplayNameFormat = "Vehicle require {{SubType}} maintenance",
-                    AlertDescriptionFormat = "Vehicle require {{SubType}} maintenance"
+                    AlertDisplayNameFormat = "Vehicle require maintenance, part={{SubType}}",
+                    AlertDescriptionFormat = "VehicleID: {{VehicleId}}\nPayload: {{Payload}}"
                 }
             };
-            vehicleRequiredMaintenance.CustomDetails.Add("EntityId", "EntityId");
-            vehicleRequiredMaintenance.CustomDetails.Add("SubType", "SubType");
-            vehicleRequiredMaintenance.EntityMappings.Add(vehicleIdEntityMappings);
-            DefaultRules.Add("c8794ea7-8648-4fb8-88ba-82197d52461b", vehicleRequiredMaintenance);
+            vehicleMaintenance.CustomDetails.Add("VehicleId", "VehicleId");
+            vehicleMaintenance.CustomDetails.Add("SubType", "SubType");
+            vehicleMaintenance.CustomDetails.Add("Payload", "Payload");
+
+            vehicleMaintenance.EntityMappings.Add(vehicleIdEntityMappings);
+            DefaultRules.Add("c8794ea7-8648-4fb8-88ba-82197d52461b", vehicleMaintenance);
 
 
             SecurityInsightsScheduledAlertRule securityInsightsScheduledAlertRule = new SecurityInsightsScheduledAlertRule()
@@ -194,6 +207,30 @@ RequiredMaintenance
             };
             a.CustomDetails.Add("Name", "Name");
             DefaultRules.Add("a8794ea7-8648-4fb8-88ba-82197d52461b", a);
+
+
+            /** Workbook 
+// Vehicle inventory
+AMICAR_CL 
+| where type_s == "Vehicle"
+| extend VehicleId = entityId_s
+| extend Vehicle = parse_json(jsonAsString_s)
+| summarize arg_max(TimeGenerated, *) by VehicleId
+| project 
+    VehicleId,
+    Status = tostring(Vehicle["status"]),
+    Make = tostring(Vehicle["make"]),
+    EngineType = tostring(Vehicle["parts"]["Engine"]["type"]),
+    Model = tostring(Vehicle["model"]),
+    SerialNumber = tostring(Vehicle["serialNumber"]),
+    Year = tostring(Vehicle["year"]),
+    Color = tostring(Vehicle["color"]),
+    Kilometers = tostring(Vehicle["kilometers"]),
+    VehicleType = tostring(Vehicle["vehicleType"]),
+    IsAvailable = tostring(Vehicle["isAvailable"]),
+    Engine = tostring(Vehicle["parts"]["Engine"]),
+    Tires = tostring(Vehicle["parts"]["Tires"])
+            **/
         }
     }
 }

@@ -178,6 +178,9 @@ namespace AutomotiveWorld
                 case SimulatorEventType.AcquireVehicle:
                     await AcquireVehicle(durableEntityClient);
                     break;
+                case SimulatorEventType.AcquireElectricVehicle:
+                    await AcquireVehicle(durableEntityClient, true);
+                    break;
                 case SimulatorEventType.NewAssignment:
                     Assignment assignment = new()
                     {
@@ -236,8 +239,11 @@ namespace AutomotiveWorld
                 assignment.VehicleDto = vehicleDto;
 
                 // FIXME Assign must return bool to know if assignment is null TryAssign, and enqueue assignment otherwise
-                await driverProxy.Assign(assignment);
-                await vehicleProxy.Assign(assignment);
+                bool driverHasBeenAssigned = await driverProxy.Assign(assignment);
+                if (driverHasBeenAssigned)
+                {
+                    await vehicleProxy.Assign(assignment);
+                }
             }
 
             context.SignalEntity(driverEntityId, assignment.ScheduledTime, nameof(Driver.StartDriving));
@@ -254,9 +260,9 @@ namespace AutomotiveWorld
             Logger.LogInformation($"Acquired driver, id=[{driverDto.Id}]");
         }
 
-        private async Task AcquireVehicle(IDurableEntityClient client)
+        private async Task AcquireVehicle(IDurableEntityClient client, bool electricVehicle = false)
         {
-            Vin vin = await VinGenerator.Next(Constants.Vehicle.MinYear, DateTime.Now.Year);
+            Vin vin = await VinGenerator.Next(Constants.Vehicle.MinYear, DateTime.Now.Year, electricVehicle);
             VehicleDto vehicleDto = VehicleFactory.Create(vin);
 
             await client.SignalEntityAsync<IVehicle>(vin.Value, proxy => proxy.Create(vehicleDto));

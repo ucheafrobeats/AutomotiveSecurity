@@ -12,7 +12,7 @@ namespace AutomotiveWorld.Entities
     {
         Task Create(DriverDto driverDto);
 
-        Task Assign(Assignment assignment);
+        Task<bool> Assign(Assignment assignment);
 
         Task Unassign();
 

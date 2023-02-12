@@ -98,7 +98,7 @@ namespace AutomotiveWorld.Entities
             if (Parts.TryGetValue(key, out object value))
             {
                 part ??= (value as JObject)?.ToObject<T>() ?? value as T;
-                return part is null ? false : true;
+                return part is not null;
             }
 
             return false;
@@ -123,13 +123,19 @@ namespace AutomotiveWorld.Entities
             return Task.CompletedTask;
         }
 
-        public Task Assign(Assignment assignment)
+        public Task<bool> Assign(Assignment assignment)
         {
+            if (assignment is not null || Status != VehicleStatus.Parking)
+            {
+                Logger.LogError($"Cannot assign vehicle, hasAssignment=[{assignment is not null}], status=[{VehicleStatus.Parking}]");
+                return Task.FromResult(false);
+            }
+
             Assignment = assignment;
             Status = VehicleStatus.Assigned;
 
             Logger.LogInformation($"Vehicle has been assigned, assignmentId=[{assignment.Id}], driverId=[{assignment.DriverDto.Id}], vehicleId=[{assignment.VehicleDto.Id}]");
-            return Task.CompletedTask;
+            return Task.FromResult(true);
         }
 
         public async Task UpdateTrip(double kilometers)
@@ -170,7 +176,7 @@ namespace AutomotiveWorld.Entities
                     {
                         tire.IsFaulty = true;
 
-                        MarkAsFaulty();
+                        Status = VehicleStatus.Faulty;
                     }
                 }
 
@@ -195,39 +201,74 @@ namespace AutomotiveWorld.Entities
                 engine.Status = EngineStatus.Off;
             }
 
-            Entity.Current.SignalEntity<IVehicle>(Id, e => e.Unassign());
 
             return Task.CompletedTask;
         }
 
         public Task Unassign()
         {
-            if (Assignment is null)
+            if (Assignment is not null)
             {
-                return Task.CompletedTask;
+                Logger.LogInformation($"Vehicle unassign, driverId=[{Assignment.DriverDto.Id}], vehicleId=[{Assignment.VehicleDto.Id}]");
+                Assignment = null;
             }
-
-            Logger.LogInformation($"Vehicle unassign, driverId=[{Assignment.DriverDto.Id}], vehicleId=[{Assignment.VehicleDto.Id}]");
-            Assignment = null;
-
-            UpdateStatus();
 
             return Task.CompletedTask;
         }
 
-        private void UpdateStatus()
+        public Task Maintenance()
         {
-            if (Status == VehicleStatus.Assigned)
+            Logger.LogInformation($"Vehicle maintenance started, vehicleId=[{Id}]");
+
+            Status = VehicleStatus.Garage;
+
+            Garage.Treat(this);
+
+            TimeSpan maintenanceTimeSpan = TimeSpan.FromMinutes(Rand.Next(Constants.Vehicle.Maintenance.MaintenanceTimeInMinutesMinValue, Constants.Vehicle.Maintenance.MaintenanceTimeInMinutesMaxValue));
+            Entity.Current.SignalEntity<IVehicle>(Id, DateTime.UtcNow + maintenanceTimeSpan, e => e.Park());
+            Logger.LogInformation($"Vehicle maintenance done, vehicleId=[{Id}]");
+
+            return Task.CompletedTask;
+        }
+
+        public Task Park()
+        {
+            if (Kilometers > Constants.Vehicle.MaxTotalKilometers)
             {
-                Status = VehicleStatus.Parking;
+                Status = VehicleStatus.OutOfService;
+
             }
+
+            switch (Status)
+            {
+                case VehicleStatus.Assigned:
+                case VehicleStatus.Garage:
+                    Status = VehicleStatus.Parking;
+                    Entity.Current.SignalEntity<IVehicle>(Id, e => e.Unassign());
+                    Entity.Current.SignalEntity<IVehicle>(Id, e => e.TurnOffEngine());
+                    break;
+                case VehicleStatus.Faulty:
+                    Status = VehicleStatus.Garage;
+                    Logger.LogInformation($"Vehicle require maintenance, vehicleId=[{Id}]");
+                    Entity.Current.SignalEntity<IVehicle>(Id, e => e.Maintenance());
+                    break;
+                case VehicleStatus.OutOfService:
+                    Logger.LogInformation($"Vehicle marked as out of service, vehicleId=[{Id}]");
+                    Entity.Current.SignalEntity<IVehicle>(Id, e => e.Delete());
+                    break;
+                case VehicleStatus.Parking:
+                    Status = VehicleStatus.Assigned;
+                    break;
+            }
+
+            return Task.CompletedTask;
         }
 
-        private void MarkAsFaulty()
-        {
-            Status = VehicleStatus.Faulty;
-        }
-
+        /// <summary>
+        ///     Validates Tire part and send alert telemetry if faulty
+        /// </summary>
+        /// <param name="tire">Tire to validate</param>
+        /// <returns>true iff faulty</returns>
         private async Task<bool> ValidateAndAlertTire(Tire tire)
         {
             if (tire == null || tire.IsFaulty)
@@ -237,8 +278,8 @@ namespace AutomotiveWorld.Entities
 
             PsiSpec psiSpec = VehicleFactory.GetPsiSpec(VehicleType);
 
-            if ((tire.Side == TireSideType.Spare && (tire.Pressure < VehicleBuilder.SpareTierMinPressure || tire.Year < DateTime.Now.Year - VehicleBuilder.SpareTierMinYearOffset)) ||
-                (tire.Side != TireSideType.Spare && (tire.Pressure < psiSpec.MinValue || tire.Pressure > psiSpec.MaxValue || tire.Year < DateTime.Now.Year - VehicleBuilder.TierMinYearOffset)))
+            if ((tire.Side == TireSideType.Spare && (tire.Pressure < Constants.Vehicle.Tire.SpareMinPressure || tire.Year < DateTime.Now.Year - Constants.Vehicle.Tire.SpareMinYear)) ||
+                (tire.Side != TireSideType.Spare && (tire.Pressure < psiSpec.MinValue || tire.Pressure > psiSpec.MaxValue || tire.Year < DateTime.Now.Year - Constants.Vehicle.Tire.NonSpareMinYear)))
             {
                 Logger.LogInformation($"Tire required maintenance, vehicleId=[{Id}], side=[{tire.Side}], year=[{tire.Year}], pressure=[{tire.Pressure}]");
                 tire.IsFaulty = true;

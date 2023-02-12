@@ -13,12 +13,6 @@ namespace AutomotiveWorld.Builders
 
         private static readonly Color[] Colors = (Color[])Enum.GetValues(typeof(Color));
 
-        public const int TierMinYearOffset = 3;
-
-        public const int SpareTierMinYearOffset = 5;
-
-        public const int SpareTierMinPressure = 60;
-
         public VehicleDto VehicleDto { get; private set; }
 
         public Vin Vin { get; private set; }
@@ -69,7 +63,7 @@ namespace AutomotiveWorld.Builders
             Engine engine = new()
             {
                 Displacement = Vin.DisplacementL,
-                Type = Vin.TryGetValue("Fuel Type - Primary", out string fuelTypePrimary) ? EngineTypeFactory.FromString(fuelTypePrimary) : EngineType.Unknown,
+                Type = Vin.EngineType,
                 Cylinders = Vin.TryGetValue("Engine Number of Cylinders", out string numberOfCylinders) ? Convert.ToInt32(numberOfCylinders) : 0,
             };
 
@@ -85,7 +79,7 @@ namespace AutomotiveWorld.Builders
                 Tire tire = new()
                 {
                     Pressure = Rand.Next(PsiSpec.MinValue, PsiSpec.MaxValue),
-                    Year = Rand.Next(DateTime.Now.Year - TierMinYearOffset, DateTime.Now.Year),
+                    Year = Rand.Next(DateTime.Now.Year - Constants.Vehicle.Tire.NonSpareMinYear, DateTime.Now.Year),
                     Side = tireSideType
 
                 };
@@ -97,8 +91,8 @@ namespace AutomotiveWorld.Builders
             {
                 tires.Spare = new Tire()
                 {
-                    Pressure = SpareTierMinPressure,
-                    Year = Rand.Next(DateTime.Now.Year - SpareTierMinYearOffset, DateTime.Now.Year),
+                    Pressure = Constants.Vehicle.Tire.SpareMinPressure,
+                    Year = Rand.Next(DateTime.Now.Year - Constants.Vehicle.Tire.SpareMinYear, DateTime.Now.Year),
                     Side = TireSideType.Spare
                 };
             }

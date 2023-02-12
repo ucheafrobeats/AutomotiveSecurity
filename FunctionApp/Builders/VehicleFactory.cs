@@ -1,7 +1,6 @@
 ﻿using AutomotiveWorld.DataAccess;
-using AutomotiveWorld.Entities;
 using AutomotiveWorld.Models;
-using System;
+using AutomotiveWorld.Models.Parts;
 
 namespace AutomotiveWorld.Builders
 {
@@ -36,6 +35,5 @@ namespace AutomotiveWorld.Builders
                 _ => Constants.Vehicle.Psi.Default,
             };
         }
-
     }
 }

@@ -2,11 +2,11 @@
 using AutomotiveWorld.Models;
 using AutomotiveWorld.Models.Parts;
 using AutomotiveWorld.Network;
+using Grpc.Core;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using System;
 using System.Threading.Tasks;
 
@@ -66,12 +66,18 @@ namespace AutomotiveWorld.Entities
             return Task.CompletedTask;
         }
 
-        public Task Assign(Assignment assignment)
+        public Task<bool> Assign(Assignment assignment)
         {
+            if (assignment is not null)
+            {
+                Logger.LogError($"Cannot assign driver, hasAssignment=[{assignment is not null}]");
+                return Task.FromResult(false);
+            }
+
             Assignment = assignment;
 
             Logger.LogInformation($"Driver has been assigned, assignmentId=[{assignment.Id}], driverId=[{assignment.DriverDto.Id}], vehicleId=[{assignment.VehicleDto.Id}]");
-            return Task.CompletedTask;
+            return Task.FromResult(true);
         }
 
         public Task<bool> StartDriving()
@@ -144,7 +150,7 @@ namespace AutomotiveWorld.Entities
 
             Logger.LogInformation($"Stop driving, driverId=[{Assignment.DriverDto.Id}], vehicleId=[{Assignment.VehicleDto.Id}]");
 
-            Entity.Current.SignalEntity<IVehicle>(Assignment.VehicleDto.Id, e => e.TurnOffEngine());
+            Entity.Current.SignalEntity<IVehicle>(Assignment.VehicleDto.Id, e => e.Park());
             Entity.Current.SignalEntity<IDriver>(Id, e => e.Unassign());
             return Task.CompletedTask;
         }

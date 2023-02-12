@@ -4,6 +4,7 @@
     {
         AcquireDriver,
         AcquireVehicle,
+        AcquireElectricVehicle,
         NewAssignment,
         //Accident,
         //PeriphealExploit,

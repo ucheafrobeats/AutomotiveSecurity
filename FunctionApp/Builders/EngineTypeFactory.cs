@@ -13,6 +13,7 @@ namespace AutomotiveWorld.Builders
 
             return value.ToLower().Trim() switch
             {
+                "electric" => EngineType.BEV,
                 "gasoline" => EngineType.ESS,
                 "diesel" => EngineType.DSL,
                 _ => EngineType.Unknown,
