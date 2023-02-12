@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 
 namespace AutomotiveWorld.Models.Telemetry
 {
-    public class MaintenanceTelemetryPayload
+    public class MaintenanceTireTelemetryPayload
     {
         [JsonProperty("tire")]
         public Tire Tire { get; set; }

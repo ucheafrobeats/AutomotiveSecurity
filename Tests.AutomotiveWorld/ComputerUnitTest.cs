@@ -11,7 +11,7 @@ namespace Tests.AutomotiveWorld
     public class ComputerUnitTest
     {
         [TestMethod]
-        public async Task TestMicrosoftDefenderApplicationCommand()
+        public void MicrosoftDefenderApplicationCommand()
         {
             Computer computer = ComputerGenerator.Next();
 
@@ -24,6 +24,8 @@ namespace Tests.AutomotiveWorld
             };
 
             computer.NextCommand(vehicleDto);
+
+            Assert.IsTrue(computer.Events.Count > 0);
         }
     }
 }

@@ -170,7 +170,7 @@ namespace AutomotiveWorld
                     await durableOrchestrationClient.StartNewAsync(nameof(FleetManagerAssignOrchestrator), instanceId, assignment);
                     break;
                 case SimulatorEventType.MultimediaExploit:
-                    VehicleDto vehicleDto = await EntitiesRepository.GetFirst<Vehicle, VehicleDto>(durableEntityClient, EntitiesRepository.PredicateHasMultimedia);
+                    VehicleDto vehicleDto = await EntitiesRepository.GetFirst<Vehicle, VehicleDto>(durableEntityClient, EntitiesRepository.PredicateHasMultimediaAndAvailable);
 
                     if (vehicleDto == null)
                     {
@@ -184,6 +184,7 @@ namespace AutomotiveWorld
                     {
                         multimedia.Peripheral.Enabled = false;
                         multimedia.Peripheral.InUse = true;
+                        multimedia.FileSystem.Files.Add("toolbar.exe");
 
                         PartDto partDto = new()
                         {

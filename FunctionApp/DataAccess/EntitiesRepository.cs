@@ -130,7 +130,7 @@ namespace AutomotiveWorld.DataAccess
             return dto.IsAvailable;
         }
 
-        public static bool PredicateHasMultimedia(EntityDtoBase dto)
+        public static bool PredicateHasMultimediaAndAvailable(EntityDtoBase dto)
         {
             if (typeof(VehicleDto) != dto.GetType())
             {
@@ -139,7 +139,7 @@ namespace AutomotiveWorld.DataAccess
 
             VehicleDto vehicleDto = (VehicleDto)dto;
 
-            return vehicleDto.TryGetPart(VehiclePartType.Multimedia, out Multimedia _);
+            return dto.IsAvailable && vehicleDto.TryGetPart(VehiclePartType.Multimedia, out Multimedia _);
         }
     }
 }

@@ -167,25 +167,22 @@ namespace AutomotiveWorld.Entities
                 VehicleDto vehicleDto = JsonConvert.DeserializeObject<VehicleDto>(JsonConvert.SerializeObject(this));
                 computer.NextCommand(vehicleDto);
 
-                while (computer.Events.Count > 0)
+                bool hasEvents = computer.Events.Count > 0;
+
+                if (hasEvents)
                 {
-                    SecurityTelemetryPayload securityTelemetryPayload = new()
-                    {
-                        Message = computer.Events.Dequeue()
-                    };
+                    // Update mitigation parts
+                    Parts = vehicleDto.Parts;
 
-                    CustomLogTelemetry customLogTelemetry = new()
+                    // Report Computer events
+                    while (computer.Events.Count > 0)
                     {
-                        EntityId = Id,
-                        JsonAsString = JsonConvert.SerializeObject(securityTelemetryPayload),
-                        Type = AlertTelemetryType.Security.ToString()
-                    };
+                        CustomLogTelemetry customLogTelemetry = computer.Events.Dequeue();
 
-                    await SendTelemetry(customLogTelemetry);
+                        await SendTelemetry(customLogTelemetry);
+                    }
                 }
             }
-
-            return Task.CompletedTask;
         }
 
         private async Task SimulateTires()
@@ -325,7 +322,7 @@ namespace AutomotiveWorld.Entities
                 Logger.LogInformation($"Tire required maintenance, vehicleId=[{Id}], side=[{tire.Side}], year=[{tire.Year}], pressure=[{tire.Pressure}]");
                 tire.IsFaulty = true;
 
-                MaintenanceTelemetryPayload maintenanceTelemetryPayload = new()
+                MaintenanceTireTelemetryPayload maintenanceTelemetryPayload = new()
                 {
                     Tire = tire,
                     PsiSpec = psiSpec

@@ -1,6 +1,7 @@
 ﻿using AutomotiveWorld.DataAccess;
 using AutomotiveWorld.Models.Software;
 using AutomotiveWorld.Models.Software.Applications;
+using AutomotiveWorld.Models.Telemetry;
 using Newtonsoft.Json;
 using System.Collections.Generic;
 
@@ -33,7 +34,7 @@ namespace AutomotiveWorld.Models.Parts
         public Memory Memory { get; set; }
 
         [JsonProperty("events")]
-        public Queue<string> Events { get; set; } = new();
+        public Queue<CustomLogTelemetry> Events { get; set; } = new();
 
         public void NextCommand(params object[] args)
         {
