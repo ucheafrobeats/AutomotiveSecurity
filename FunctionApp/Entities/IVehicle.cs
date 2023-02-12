@@ -7,6 +7,8 @@ namespace AutomotiveWorld.Entities
 {
     public interface IVehicle
     {
+        Task SetPart(PartDto partDto);
+
         Task Create(VehicleDto vehicleDto);
 
         Task Delete();

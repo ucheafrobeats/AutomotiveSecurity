@@ -1,10 +1,13 @@
 ﻿using AutomotiveWorld.Entities;
+using AutomotiveWorld.Models.Parts;
+using AutomotiveWorld.Models;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -66,7 +69,7 @@ namespace AutomotiveWorld.DataAccess
             return count;
         }
 
-        public async Task<TDto> GetFirstAvailable<TEntity, TDto>(IDurableEntityClient client, int pageSize = 100, bool fetchState = true)
+        public async Task<TDto> GetFirst<TEntity, TDto>(IDurableEntityClient client, Predicate<TDto> predicate, int pageSize = 100, bool fetchState = true)
             where TEntity : EntityBase
             where TDto : EntityDtoBase
         {
@@ -103,7 +106,7 @@ namespace AutomotiveWorld.DataAccess
                     {
                         dto = durableEntityStatus.State.ToObject<TDto>();
 
-                        if (!dto.IsAvailable)
+                        if (!predicate(dto))
                         {
                             continue;
                         }
@@ -120,6 +123,23 @@ namespace AutomotiveWorld.DataAccess
             }
             while (query.ContinuationToken != null);
             return null;
+        }
+
+        public static bool PredicateIsAvailable(EntityDtoBase dto)
+        {
+            return dto.IsAvailable;
+        }
+
+        public static bool PredicateHasMultimedia(EntityDtoBase dto)
+        {
+            if (typeof(VehicleDto) != dto.GetType())
+            {
+                return false;
+            }
+
+            VehicleDto vehicleDto = (VehicleDto)dto;
+
+            return vehicleDto.TryGetPart(VehiclePartType.Multimedia, out Multimedia _);
         }
     }
 }

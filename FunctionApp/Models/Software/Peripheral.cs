@@ -9,5 +9,8 @@ namespace AutomotiveWorld.Models.Software
 
         [JsonProperty("inUse")]
         public bool InUse { get; set; }
+
+        [JsonProperty("enabled")]
+        public bool Enabled { get; set; }
     }
 }

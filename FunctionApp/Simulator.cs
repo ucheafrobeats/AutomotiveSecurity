@@ -1,40 +1,17 @@
-﻿using AutomotiveWorld.Builders;
+﻿using AutomotiveWorld.AzureClients;
+using AutomotiveWorld.Builders;
+using AutomotiveWorld.DataAccess;
 using AutomotiveWorld.Entities;
 using AutomotiveWorld.Models;
+using AutomotiveWorld.Models.Parts;
 using AutomotiveWorld.Network;
-using Azure.Identity;
-using Azure.ResourceManager.Resources;
-using Azure.ResourceManager;
-using Azure;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Microsoft.Azure.WebJobs.Extensions.Http;
-using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Attributes;
-using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Enums;
 using Microsoft.Extensions.Logging;
-using Microsoft.OpenApi.Models;
-using Newtonsoft.Json;
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Collections.Immutable;
-using System.IO;
-using System.Net;
-using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using Azure.ResourceManager.SecurityInsights;
-using Azure.Core;
-using Azure.ResourceManager.SecurityInsights.Models;
-using System.Data;
-using System.Collections;
-using System.Reflection;
-using AutomotiveWorld.AzureClients;
-using AutomotiveWorld.DataAccess;
-using Microsoft.AspNetCore.JsonPatch.Operations;
-using static Microsoft.AspNetCore.Hosting.Internal.HostingApplication;
 
 namespace AutomotiveWorld
 {
@@ -192,6 +169,44 @@ namespace AutomotiveWorld
 
                     await durableOrchestrationClient.StartNewAsync(nameof(FleetManagerAssignOrchestrator), instanceId, assignment);
                     break;
+                case SimulatorEventType.MultimediaExploit:
+                    VehicleDto vehicleDto = await EntitiesRepository.GetFirst<Vehicle, VehicleDto>(durableEntityClient, EntitiesRepository.PredicateHasMultimedia);
+
+                    if (vehicleDto == null)
+                    {
+                        Logger.LogInformation($"Cannot simulate {nameof(SimulatorEventType.MultimediaExploit)}, VehicleId=[null]");
+                        break;
+                    }
+
+                    Logger.LogInformation($"Simulate {nameof(SimulatorEventType.MultimediaExploit)}, VehicleId=[{vehicleDto.Id}]");
+
+                    if (vehicleDto.TryGetPart(VehiclePartType.Multimedia, out Multimedia multimedia))
+                    {
+                        multimedia.Peripheral.Enabled = false;
+                        multimedia.Peripheral.InUse = true;
+
+                        PartDto partDto = new()
+                        {
+                            Type = VehiclePartType.Multimedia,
+                            Part = multimedia
+                        };
+
+                        await durableEntityClient.SignalEntityAsync<IVehicle>(vehicleDto.Id, proxy => proxy.SetPart(partDto));
+                    }
+                    break;
+            }
+
+            for (int i = 0; i < 5; i++)
+            {
+                Assignment assignment = new()
+                {
+                    TotalKilometers = Rand.Next(Constants.Assignment.TotalKilometerMinValue, Constants.Assignment.TotalKilometerMaxValue),
+                    ScheduledTime = DateTime.UtcNow.AddMinutes(Constants.Assignment.ScheduledTimeOffsetInMinutes)
+                };
+
+                var instanceId = assignment.Id;
+
+                await durableOrchestrationClient.StartNewAsync(nameof(FleetManagerAssignOrchestrator), instanceId, assignment);
             }
         }
 
@@ -246,6 +261,10 @@ namespace AutomotiveWorld
                 }
             }
 
+            if (!context.IsReplaying)
+            {
+                Logger.LogInformation($"Assign successfully, assignmentId=[{assignment.Id}], driverId=[{assignment.DriverDto.Id}], vehicle=[{assignment.VehicleDto.Id}], scheduledTime=[{assignment.ScheduledTime}]");
+            }
             context.SignalEntity(driverEntityId, assignment.ScheduledTime, nameof(Driver.StartDriving));
 
             Logger.LogInformation($"{nameof(FleetManagerAssignOrchestrator)} finished successfully, assignmentId=[{assignment.Id}]");
@@ -306,7 +325,9 @@ namespace AutomotiveWorld
             [ActivityTrigger] IDurableActivityContext context,
             [DurableClient] IDurableEntityClient client)
         {
-            return await EntitiesRepository.GetFirstAvailable<Vehicle, VehicleDto>(client);
+
+
+            return await EntitiesRepository.GetFirst<Vehicle, VehicleDto>(client, EntitiesRepository.PredicateIsAvailable);
         }
 
         [FunctionName(nameof(ActivityGetAvailableDriver))]
@@ -314,7 +335,7 @@ namespace AutomotiveWorld
             [ActivityTrigger] IDurableActivityContext context,
             [DurableClient] IDurableEntityClient client)
         {
-            return await EntitiesRepository.GetFirstAvailable<Driver, DriverDto>(client);
+            return await EntitiesRepository.GetFirst<Driver, DriverDto>(client, EntitiesRepository.PredicateIsAvailable);
         }
 
 

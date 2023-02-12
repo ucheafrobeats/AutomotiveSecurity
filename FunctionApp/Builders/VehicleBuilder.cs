@@ -38,6 +38,7 @@ namespace AutomotiveWorld.Builders
 
         public virtual void Build()
         {
+            BuildComputer();
             BuildFrame();
             BuildEngine();
             BuildTires();
@@ -49,6 +50,11 @@ namespace AutomotiveWorld.Builders
         public virtual void Paint(Color? color = null)
         {
             VehicleDto.Color = color is null ? Colors[Rand.Next(Colors.Length)] : color.Value;
+        }
+
+        public virtual void BuildComputer()
+        {
+            VehicleDto[VehiclePartType.Computer] = ComputerGenerator.Next();
         }
 
         public virtual void BuildFrame()

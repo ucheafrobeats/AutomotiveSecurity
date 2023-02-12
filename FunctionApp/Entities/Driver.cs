@@ -68,9 +68,9 @@ namespace AutomotiveWorld.Entities
 
         public Task<bool> Assign(Assignment assignment)
         {
-            if (assignment is not null)
+            if (Assignment is not null)
             {
-                Logger.LogError($"Cannot assign driver, hasAssignment=[{assignment is not null}]");
+                Logger.LogError($"Cannot assign driver, hasAssignment=[{Assignment is not null}]");
                 return Task.FromResult(false);
             }
 

@@ -104,6 +104,13 @@ namespace AutomotiveWorld.Entities
             return false;
         }
 
+        public async Task SetPart(PartDto partDto)
+        {
+            this[partDto.Type] = partDto.Part;
+
+            await SendTelemetry();
+        }
+
         public Task Create(VehicleDto vehicleDto)
         {
             Id = vehicleDto.Id;
@@ -123,28 +130,43 @@ namespace AutomotiveWorld.Entities
             return Task.CompletedTask;
         }
 
-        public Task<bool> Assign(Assignment assignment)
+        public async Task<bool> Assign(Assignment assignment)
         {
-            if (assignment is not null || Status != VehicleStatus.Parking)
+            if (Assignment is not null || Status != VehicleStatus.Parking)
             {
-                Logger.LogError($"Cannot assign vehicle, hasAssignment=[{assignment is not null}], status=[{VehicleStatus.Parking}]");
-                return Task.FromResult(false);
+                Logger.LogError($"Cannot assign vehicle, hasAssignment=[{Assignment is not null}], status=[{VehicleStatus.Parking}]");
+                return false;
             }
 
             Assignment = assignment;
             Status = VehicleStatus.Assigned;
 
             Logger.LogInformation($"Vehicle has been assigned, assignmentId=[{assignment.Id}], driverId=[{assignment.DriverDto.Id}], vehicleId=[{assignment.VehicleDto.Id}]");
-            return Task.FromResult(true);
+
+            await SendTelemetry();
+
+            return true;
         }
 
         public async Task UpdateTrip(double kilometers)
         {
             Kilometers += kilometers;
 
+            await SimulateComputer();
+
             await SimulateTires();
 
             await SendTelemetry();
+        }
+
+        private Task SimulateComputer()
+        {
+            if (TryGetPart(VehiclePartType.Computer, out Computer computer))
+            {
+                computer.NextCommand(this);
+            }
+
+            return Task.CompletedTask;
         }
 
         private async Task SimulateTires()
@@ -205,7 +227,7 @@ namespace AutomotiveWorld.Entities
             return Task.CompletedTask;
         }
 
-        public Task Unassign()
+        public async Task Unassign()
         {
             if (Assignment is not null)
             {
@@ -213,7 +235,7 @@ namespace AutomotiveWorld.Entities
                 Assignment = null;
             }
 
-            return Task.CompletedTask;
+            await SendTelemetry();
         }
 
         public Task Maintenance()

@@ -7,11 +7,10 @@
         AcquireElectricVehicle,
         NewAssignment,
         //Accident,
-        //PeriphealExploit,
+        MultimediaExploit,
         //ApplicationVulnerability,
         //CodeExecution,
         //MalliciousConnectivity,
-        //AddDriver,
         //NewVulnerability,
     }
 }

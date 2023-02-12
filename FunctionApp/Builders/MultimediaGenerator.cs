@@ -1,8 +1,8 @@
 ﻿using AutomotiveWorld.Models.Parts;
 using AutomotiveWorld.Models.Software;
+using AutomotiveWorld.Models.Software.Applications;
 using Newtonsoft.Json;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -35,18 +35,8 @@ namespace AutomotiveWorld.Builders
                 },
                 Applications = new()
                 {
-                    new Application()
-                    {
-                        Name= "Youtube",
-                        Enabled = true,
-                        Version = 2.1
-                    },
-                    new Application()
-                    {
-                        Name= "Waze",
-                        Enabled = true,
-                        Version = 3.1
-                    },
+                    new DummyApplication("Youtube", 2.1, true),
+                    new DummyApplication("Waze", 3.1, true)
                 }
             },
             new()
@@ -70,23 +60,13 @@ namespace AutomotiveWorld.Builders
                 },
                 Applications = new()
                 {
-                    new Application()
-                    {
-                        Name= "Youtube",
-                        Enabled = true,
-                        Version = 3.4
-                    },
-                    new Application()
-                    {
-                        Name= "Gps",
-                        Enabled = false,
-                        Version = 1.1
-                    },
+                    new DummyApplication("Youtube", 3.4, true),
+                    new DummyApplication("Gps", 1.1, false)
                 }
             }
         };
 
-        public static Multimedia GenerateMultimedia()
+        public static Multimedia Next()
         {
             // Deepcopy
             Multimedia multimedia = JsonConvert.DeserializeObject<Multimedia>(

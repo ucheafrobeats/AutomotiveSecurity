@@ -24,7 +24,7 @@ namespace AutomotiveWorld.Builders
         {
             base.Build();
 
-            VehicleDto[VehiclePartType.Multimedia] = MultimediaGenerator.GenerateMultimedia();
+            VehicleDto[VehiclePartType.Multimedia] = MultimediaGenerator.Next();
         }
 
         public override void BuildTires()
