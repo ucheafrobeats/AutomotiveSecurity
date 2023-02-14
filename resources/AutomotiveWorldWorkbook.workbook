@@ -1,0 +1,156 @@
+{
+  "version": "Notebook/1.0",
+  "items": [
+    {
+      "type": 1,
+      "content": {
+        "json": "Inventory"
+      },
+      "name": "text - 2"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "AMICAR_CL \r\n| where type_s in (\"Vehicle\", \"Driver\")\r\n| summarize arg_max(TimeGenerated, *) by entityId_s\r\n| summarize count() by type_s",
+        "size": 0,
+        "timeContext": {
+          "durationMs": 604800000
+        },
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "barchart",
+        "graphSettings": {
+          "type": 0,
+          "topContent": {
+            "columnMatch": "type_s",
+            "formatter": 1
+          },
+          "centerContent": {
+            "columnMatch": "count_",
+            "formatter": 1,
+            "numberFormat": {
+              "unit": 17,
+              "options": {
+                "maximumSignificantDigits": 3,
+                "maximumFractionDigits": 2
+              }
+            }
+          }
+        }
+      },
+      "name": "query - 3"
+    },
+    {
+      "type": 12,
+      "content": {
+        "version": "NotebookGroup/1.0",
+        "groupType": "editable",
+        "items": [
+          {
+            "type": 1,
+            "content": {
+              "json": "Drivers"
+            },
+            "name": "text - 0"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "AMICAR_CL \r\n| where type_s == \"Driver\"\r\n| extend DriverId = entityId_s\r\n| extend Driver = parse_json(jsonAsString_s)\r\n| summarize arg_max(TimeGenerated, *) by DriverId\r\n| project \r\n    DriverId,\r\n    Name = Driver[\"name\"],\r\n    Tachograph = Driver[\"tachograph\"],\r\n    RestTime = Driver[\"restTime\"],\r\n    HasAssignment = isnotempty(Driver[\"assignment\"])",
+              "size": 0,
+              "timeContext": {
+                "durationMs": 86400000
+              },
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces"
+            },
+            "name": "query - 1"
+          }
+        ]
+      },
+      "name": "group - 1"
+    },
+    {
+      "type": 12,
+      "content": {
+        "version": "NotebookGroup/1.0",
+        "groupType": "editable",
+        "items": [
+          {
+            "type": 1,
+            "content": {
+              "json": "Vehicle Inventory"
+            },
+            "name": "text - 2 - Copy"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "// Vehicle inventory\r\nAMICAR_CL \r\n| where type_s == \"Vehicle\"\r\n| extend VehicleId = entityId_s\r\n| extend Vehicle = parse_json(jsonAsString_s)\r\n| summarize arg_max(TimeGenerated, *) by VehicleId\r\n| project \r\n    VehicleId,\r\n    Status = tostring(Vehicle[\"status\"]),\r\n    Make = tostring(Vehicle[\"make\"]),\r\n    EngineType = tostring(Vehicle[\"parts\"][\"Engine\"][\"type\"]),\r\n    Model = tostring(Vehicle[\"model\"]),\r\n    SerialNumber = tostring(Vehicle[\"serialNumber\"]),\r\n    Year = tostring(Vehicle[\"year\"]),\r\n    Color = tostring(Vehicle[\"color\"]),\r\n    Kilometers = tostring(Vehicle[\"kilometers\"]),\r\n    VehicleType = tostring(Vehicle[\"vehicleType\"]),\r\n    IsAvailable = tostring(Vehicle[\"isAvailable\"]),\r\n    Battery = tostring(Vehicle[\"battery\"]),\r\n    Computer = tostring(Vehicle[\"parts\"][\"Computer\"]),\r\n    Engine = tostring(Vehicle[\"parts\"][\"Engine\"]),\r\n    Tires = tostring(Vehicle[\"parts\"][\"Tires\"])",
+              "size": 0,
+              "timeContext": {
+                "durationMs": 86400000
+              },
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "visualization": "table"
+            },
+            "name": "query - 2"
+          },
+          {
+            "type": 1,
+            "content": {
+              "json": "Multimedia Applications (24h)"
+            },
+            "name": "text - 2"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "AMICAR_CL\r\n| where type_s == \"Vehicle\"\r\n| extend VehicleId = entityId_s\r\n| extend Vehicle = parse_json(jsonAsString_s)\r\n| extend applications = Vehicle[\"parts\"][\"Multimedia\"][\"applications\"]\r\n| where isnotempty(applications)\r\n| mv-expand Application = applications\r\n| project Name = Application[\"name\"], Version = Application[\"version\"], Enabled = Application[\"enabled\"], vin_s\r\n| distinct tostring(Name), tostring(Version)\r\n\r\n",
+              "size": 4,
+              "timeContext": {
+                "durationMs": 86400000
+              },
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces"
+            },
+            "name": "query - 3"
+          },
+          {
+            "type": 1,
+            "content": {
+              "json": "Tires by year"
+            },
+            "name": "text - 5"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "// Tires by year\r\nAMICAR_CL \r\n| where type_s == \"Vehicle\"\r\n| extend VehicleId = entityId_s\r\n| extend Vehicle = parse_json(jsonAsString_s)\r\n| summarize arg_max(TimeGenerated, *) by VehicleId\r\n| extend Tires = todynamic(tostring(Vehicle[\"parts\"][\"Tires\"]))\r\n| mv-expand Tire = Tires\r\n| evaluate bag_unpack(Tire)\r\n| extend TireYear = coalesce(leftFront[\"year\"], leftRear[\"year\"], rightFront[\"year\"], rightRear[\"year\"], spare[\"year\"])\r\n| extend Faulty = coalesce(leftFront[\"isFaulty\"], leftRear[\"isFaulty\"], rightFront[\"isFaulty\"], rightRear[\"isFaulty\"], spare[\"isFaulty\"])\r\n| summarize count() by tostring(TireYear), tobool(Faulty)",
+              "size": 0,
+              "timeContext": {
+                "durationMs": 86400000
+              },
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "visualization": "barchart"
+            },
+            "name": "query - 4"
+          }
+        ]
+      },
+      "name": "group - 4"
+    }
+  ],
+  "fallbackResourceIds": [
+    "/subscriptions/075423e9-7d33-4166-8bdf-3920b04e3735/resourcegroups/amhollan/providers/microsoft.operationalinsights/workspaces/la-ami"
+  ],
+  "fromTemplateId": "sentinel-UserWorkbook",
+  "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json"
+}
