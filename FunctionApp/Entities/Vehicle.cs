@@ -70,6 +70,9 @@ namespace AutomotiveWorld.Entities
         [JsonConverter(typeof(StringEnumConverter))]
         public VehicleStatus Status { get; set; } = VehicleStatus.Parking;
 
+        [JsonProperty("location")]
+        public string Location { get; set; }
+
         public Vehicle(
             ILogger<Vehicle> logger,
             AzureLogAnalyticsClient azureLogAnalyticsClient) : base(
@@ -126,6 +129,7 @@ namespace AutomotiveWorld.Entities
             TrimLevel = vehicleDto.TrimLevel;
             VehicleType = vehicleDto.VehicleType;
             Year = vehicleDto.Year;
+            Location = vehicleDto.Location;
 
             return Task.CompletedTask;
         }
