@@ -90,12 +90,6 @@ namespace AutomotiveWorld
             }
         }
 
-        //[FunctionName(nameof(Orchestrator))]
-        //public async Task Orchestrator(
-        //    [OrchestrationTrigger] IDurableOrchestrationContext context)
-        //{
-        //    await context.CallSubOrchestratorAsync(nameof(FleetManagerOrchestrator), "CompanyNameFleetManagerOrchestrator", "CompanyName");
-        //}
 
         [FunctionName(nameof(FleetManagerOrchestrator))]
         public async Task FleetManagerOrchestrator(
