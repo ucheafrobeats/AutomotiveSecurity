@@ -1,0 +1,24 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "logAnalyticsWorkspaceName":{
+            "value": "la-aw"
+        },
+        "logAnalyticsTableName":{
+            "value": "AutomotiveTelemetry"
+        },
+        "applicationInsightsName":{
+            "value": "ai-aw"
+        },
+        "storageAccountName":{
+            "value": "storaw"
+        },
+        "serverfarmName":{
+            "value": "sf-aw"
+        },
+        "functionAppName":{
+            "value": "sf-aw"
+        }
+    }
+}
