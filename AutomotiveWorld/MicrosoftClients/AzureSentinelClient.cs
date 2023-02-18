@@ -23,10 +23,21 @@ namespace AutomotiveWorld.AzureClients
 
         private readonly ResourceIdentifier ResourceIdentifier;
 
-        public MicrosoftSentinelClient(ILogger<MicrosoftSentinelClient> log, string workspaceResourceId, string tableName)
+        public MicrosoftSentinelClient(ILogger<MicrosoftSentinelClient> log, string workspaceResourceId, string tableName, string userAssignedManagedIdentityClientId = null)
         {
             Logger = log;
-            DefaultAzureCredential defaultAzureCredential = new();
+
+            DefaultAzureCredential defaultAzureCredential;
+            if (string.IsNullOrEmpty(userAssignedManagedIdentityClientId))
+            {
+                defaultAzureCredential = new();
+            }
+            else
+            {
+                Logger.LogInformation($"Microsoft Sentinel Client initiated with user assigned managed identity, client_id=[{userAssignedManagedIdentityClientId}]");
+                defaultAzureCredential = new DefaultAzureCredential(new DefaultAzureCredentialOptions { ManagedIdentityClientId = userAssignedManagedIdentityClientId });
+            }
+
             ArmClient = new(defaultAzureCredential);
 
             ResourceIdentifier = new(workspaceResourceId);

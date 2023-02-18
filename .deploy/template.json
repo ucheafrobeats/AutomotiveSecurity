@@ -425,11 +425,15 @@
                         },
                         {
                             "name": "SimulatorScheduleExpression",
-                            "value": "*/30 * * * *"
+                            "value": "0 */30 * * * *"
                         },
                         {
                             "name": "SimulateEventTriggerScheduleExpression",
-                            "value": "*/30 * * * *"
+                            "value": "0 */30 * * * *"
+                        },
+                        {
+                            "name": "USER_ASSIGNED_MANAGED_IDENTITY_CLIENT_ID",
+                            "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('userManagedIdentityName'))).clientId]"
                         }
                     ]
                 }
