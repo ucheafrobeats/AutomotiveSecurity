@@ -9,6 +9,15 @@
                 "description": "Location for all resources."
             }
         },
+        "userManagedIdentityName": {
+            "type": "String"
+        },
+        "userManagedIdentityRoleDefinitionIds": {
+            "type": "array",
+            "metadata": {
+                "description": "The IDs of the role definitions to assign to the managed identity. Each role assignment is created at the resource group scope. Role definition IDs are GUIDs. To find the GUID for built-in Azure role definitions, see https://docs.microsoft.com/azure/role-based-access-control/built-in-roles. You can also use IDs of custom role definitions."
+            }
+        },
         "logAnalyticsWorkspaceName": {
             "type": "String"
         },
@@ -51,7 +60,7 @@
             }
         },
         "functionWorkerRuntime": {
-            "defaultValue": "node",
+            "defaultValue": "dotnet",
             "allowedValues": [
                 "dotnet",
                 "node",
@@ -87,14 +96,54 @@
             "metadata": {
                 "description": "Only required for Linux app to represent runtime stack in the format of 'runtime|runtimeVersion'. For example: 'python|3.9'"
             }
+        },
+        "enableDataConnectorsKind": {
+            "defaultValue": [],
+            "type": "Array",
+            "metadata": {
+                "description": "The kind of data connectors that can be deployed via ARM templates are the following: [\"AzureActivityLog\",\"SecurityInsightsSecurityEventCollectionConfiguration\",\"WindowsFirewall\",\"DnsAnalytics\"], Reference: https://docs.microsoft.com/azure/templates/microsoft.operationalinsights/2020-03-01-preview/workspaces/datasources#microsoftoperationalinsightsworkspacesdatasources-object"
+            }
         }
     },
     "variables": {
+        "copy": [
+            {
+                "name": "userManagedIdentityRoleAssignmentsDefinitionIds",
+                "count": "[length(parameters('userManagedIdentityRoleDefinitionIds'))]",
+                "input": {
+                    "name": "[guid(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('userManagedIdentityName')), resourceGroup().id, parameters('userManagedIdentityRoleDefinitionIds')[copyIndex('userManagedIdentityRoleAssignmentsDefinitionIds')])]",
+                    "roleDefinitionId": "[parameters('userManagedIdentityRoleDefinitionIds')[copyIndex('userManagedIdentityRoleAssignmentsDefinitionIds')]]"
+                }
+            }
+        ],
         "logAnalyticsTableName": "[concat(parameters('logAnalyticsTableName'), '_CL')]",
         "slotContentShareName": "[format('{0}-{1}', parameters('functionAppName'), parameters('functionSlotName'))]",
         "isReserved": "[if(equals(parameters('functionPlanOS'), 'Linux'), true(), false())]"
     },
     "resources": [
+        {
+            "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+            "apiVersion": "2018-11-30",
+            "name": "[parameters('userManagedIdentityName')]",
+            "location": "[parameters('location')]"
+        },
+        {
+            "copy": {
+                "name": "roleAssignment",
+                "count": "[length(variables('userManagedIdentityRoleAssignmentsDefinitionIds'))]"
+            },
+            "type": "Microsoft.Authorization/roleAssignments",
+            "apiVersion": "2020-04-01-preview",
+            "name": "[variables('userManagedIdentityRoleAssignmentsDefinitionIds')[copyIndex()].name]",
+            "properties": {
+                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('userManagedIdentityName'))).principalId]",
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('userManagedIdentityRoleAssignmentsDefinitionIds')[copyIndex()].roleDefinitionId)]",
+                "principalType": "ServicePrincipal"
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('userManagedIdentityName'))]"
+            ]
+        },
         {
             "type": "microsoft.operationalinsights/workspaces",
             "apiVersion": "2021-12-01-preview",
@@ -154,6 +203,34 @@
             }
         },
         {
+            "comments": "Microsoft Sentinel",
+            "type": "Microsoft.SecurityInsights/onboardingStates",
+            "apiVersion": "2021-03-01-preview",
+            "name": "default",
+            "dependsOn": [
+                "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('logAnalyticsWorkspaceName'))]"
+            ],
+            "properties": {},
+            "scope": "[concat('Microsoft.OperationalInsights/workspaces/', parameters('logAnalyticsWorkspaceName'))]"
+        },
+        {
+            "comments": "Microsoft Defender for IoT connector",
+            "type": "Microsoft.OperationalInsights/workspaces/providers/dataConnectors",
+            "apiVersion": "2022-12-01-preview",
+            "name": "[concat(parameters('logAnalyticsWorkspaceName'),'/Microsoft.SecurityInsights/', 'iot', uniqueString(resourceGroup().id))]",
+            "kind": "IOT",
+            "properties": {
+                "subscriptionId": "[subscription().subscriptionId]",
+                "tenantId": "[subscription().tenantId]",
+                "dataTypes": {
+                    "alerts": {
+                        "state": "enabled"
+                    }
+                }
+            }
+        },
+        {
+            "comments": "Application Insights",
             "type": "microsoft.insights/components",
             "apiVersion": "2020-02-02",
             "name": "[parameters('applicationInsightsName')]",
@@ -248,10 +325,6 @@
                             "value": "[parameters('functionWorkerRuntime')]"
                         },
                         {
-                            "name": "WEBSITE_NODE_DEFAULT_VERSION",
-                            "value": "~14"
-                        },
-                        {
                             "name": "WEBSITE_RUN_FROM_PACKAGE",
                             "value": "1"
                         }
@@ -271,6 +344,12 @@
                 "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
             ],
             "kind": "[if(variables('isReserved'), 'functionapp,linux', 'functionapp')]",
+            "identity": {
+                "type": "UserAssigned",
+                "userAssignedIdentities": {
+                    "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('userManagedIdentityName'))]": {}
+                }
+            },
             "properties": {
                 "reserved": "[variables('isReserved')]",
                 "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', parameters('serverfarmName'))]",
@@ -302,10 +381,6 @@
                             "value": "[parameters('functionWorkerRuntime')]"
                         },
                         {
-                            "name": "WEBSITE_NODE_DEFAULT_VERSION",
-                            "value": "~14"
-                        },
-                        {
                             "name": "WEBSITE_RUN_FROM_PACKAGE",
                             "value": "1"
                         },
@@ -324,6 +399,14 @@
                         {
                             "name": "LOG_ANALYTICS_WORKSPACE_TABLE_NAME",
                             "value": "[parameters('logAnalyticsTableName')]"
+                        },
+                        {
+                            "name": "SimulatorScheduleExpression",
+                            "value": "*/30 * * * *"
+                        },
+                        {
+                            "name": "SimulateEventTriggerScheduleExpression",
+                            "value": "*/30 * * * *"
                         }
                     ]
                 }

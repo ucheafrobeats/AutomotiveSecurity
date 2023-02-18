@@ -144,8 +144,8 @@ let RequiredMaintenance = VehicleEvents
     | summarize arg_max(TimeGenerated, *) by entityId_s, subType_s1;
 RequiredMaintenance
 | project TimeGenerated, EntityId = entityId_s, Payload = MaintenancePayload, SubType = subType_s1, DriverId, DriverName, VehicleModel, VehicleId",
-                    QueryFrequency = TimeSpan.Parse("05:00:00"),
-                    QueryPeriod = TimeSpan.Parse("05:00:00"),
+                    QueryFrequency = TimeSpan.Parse("12:00:00"),
+                    QueryPeriod = TimeSpan.Parse("12:00:00"),
                     DisplayName = $"Vehicle require maintenance",
                     Description = "Vehicle require maintenance by part.",
                     Severity = SecurityInsightsAlertSeverity.Low,
@@ -154,7 +154,7 @@ RequiredMaintenance
                     IncidentConfiguration = incidentConfiguration,
                     EventGroupingAggregationKind = EventGroupingAggregationKind.AlertPerResult,
                     IsEnabled = true,
-                    SuppressionDuration = TimeSpan.Parse("05:00:00"),
+                    SuppressionDuration = TimeSpan.Parse("12:00:00"),
                     IsSuppressionEnabled = false,
                     AlertDetailsOverride = new SecurityInsightsAlertDetailsOverride()
                     {
@@ -188,8 +188,8 @@ let NewFileEvents = Table
     | mv-expand Filename = parse_json(tostring(Payload))[""files""]
     | project  TimeGenerated, VehicleId, Type, SubType, Message, Filename;
 NewFileEvents",
-                    QueryFrequency = TimeSpan.Parse("00:05:00"),
-                    QueryPeriod = TimeSpan.Parse("00:05:00"),
+                    QueryFrequency = TimeSpan.Parse("01:00:00"),
+                    QueryPeriod = TimeSpan.Parse("01:00:00"),
                     DisplayName = $"Vehicle multimedia new file detected",
                     Description = "Vehicle multimedia new file detected",
                     Severity = SecurityInsightsAlertSeverity.Medium,
@@ -198,7 +198,7 @@ NewFileEvents",
                     IncidentConfiguration = incidentConfiguration,
                     EventGroupingAggregationKind = EventGroupingAggregationKind.AlertPerResult,
                     IsEnabled = true,
-                    SuppressionDuration = TimeSpan.Parse("00:05:00"),
+                    SuppressionDuration = TimeSpan.Parse("01:00:00"),
                     IsSuppressionEnabled = false,
                     AlertDetailsOverride = new SecurityInsightsAlertDetailsOverride()
                     {
@@ -233,8 +233,8 @@ let NewPeripheralEvents = Table
     | mv-expand PeripheralName = parse_json(tostring(Payload))[""name""]
     | project  TimeGenerated, VehicleId, Type, SubType, Message, PeripheralName;
 NewPeripheralEvents",
-                    QueryFrequency = TimeSpan.Parse("00:05:00"),
-                    QueryPeriod = TimeSpan.Parse("00:05:00"),
+                    QueryFrequency = TimeSpan.Parse("01:00:00"),
+                    QueryPeriod = TimeSpan.Parse("01:00:00"),
                     DisplayName = $"Vehicle multimedia new peripheral detected",
                     Description = "Vehicle multimedia new peripheral detected",
                     Severity = SecurityInsightsAlertSeverity.Medium,
@@ -243,7 +243,7 @@ NewPeripheralEvents",
                     IncidentConfiguration = incidentConfiguration,
                     EventGroupingAggregationKind = EventGroupingAggregationKind.AlertPerResult,
                     IsEnabled = true,
-                    SuppressionDuration = TimeSpan.Parse("00:05:00"),
+                    SuppressionDuration = TimeSpan.Parse("01:00:00"),
                     IsSuppressionEnabled = false,
                     AlertDetailsOverride = new SecurityInsightsAlertDetailsOverride()
                     {

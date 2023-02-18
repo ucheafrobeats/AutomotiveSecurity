@@ -2,15 +2,19 @@
 
 ##
 
-## Prerequisites
-| # | Environment Variable                |
-|---|-------------------------------------|
-| 1 | LOG_ANALYTICS_WORKSPACE_ID          |
-| 2 | LOG_ANALYTICS_WORKSPACE_PRIMARY_KEY |
-| 3 | LOG_ANALYTICS_WORKSPACE_TABLE_NAME  |
-| 4 | LOG_ANALYTICS_WORKSPACE_RESOURCE_ID |
-| 5 | SimulatorScheduleExpression         |
-| 6 | SimulateEventTriggerScheduleExpression  |
+
+## Development Prerequisites
+1. VSCode: https://code.visualstudio.com/download
+1. Dotnet 6
+1. Update `local.settings.json`
+    | # | Environment Variable                |
+    |---|-------------------------------------|
+    | 1 | LOG_ANALYTICS_WORKSPACE_ID          |
+    | 2 | LOG_ANALYTICS_WORKSPACE_PRIMARY_KEY |
+    | 3 | LOG_ANALYTICS_WORKSPACE_TABLE_NAME  |
+    | 4 | LOG_ANALYTICS_WORKSPACE_RESOURCE_ID |
+    | 5 | SimulatorScheduleExpression         |
+    | 6 | SimulateEventTriggerScheduleExpression  |
 
 
 ## Microsoft Sentinel

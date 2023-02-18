@@ -191,18 +191,18 @@ namespace AutomotiveWorld
                     break;
             }
 
-            for (int i = 0; i < 5; i++)
-            {
-                Assignment assignment = new()
-                {
-                    TotalKilometers = Rand.Next(Constants.Assignment.TotalKilometerMinValue, Constants.Assignment.TotalKilometerMaxValue),
-                    ScheduledTime = DateTime.UtcNow.AddMinutes(Constants.Assignment.ScheduledTimeOffsetInMinutes)
-                };
+            //for (int i = 0; i < 5; i++)
+            //{
+            //    Assignment assignment = new()
+            //    {
+            //        TotalKilometers = Rand.Next(Constants.Assignment.TotalKilometerMinValue, Constants.Assignment.TotalKilometerMaxValue),
+            //        ScheduledTime = DateTime.UtcNow.AddMinutes(Constants.Assignment.ScheduledTimeOffsetInMinutes)
+            //    };
 
-                var instanceId = assignment.Id;
+            //    var instanceId = assignment.Id;
 
-                await durableOrchestrationClient.StartNewAsync(nameof(FleetManagerAssignOrchestrator), instanceId, assignment);
-            }
+            //    await durableOrchestrationClient.StartNewAsync(nameof(FleetManagerAssignOrchestrator), instanceId, assignment);
+            //}
         }
 
         [FunctionName(nameof(FleetManagerAssignOrchestrator))]

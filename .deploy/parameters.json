@@ -2,22 +2,31 @@
     "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
     "contentVersion": "1.0.0.0",
     "parameters": {
-        "logAnalyticsWorkspaceName":{
+        "userManagedIdentityName": {
+            "value": "umi-aw"
+        },
+        "userManagedIdentityRoleDefinitionIds": {
+            "value": [
+                // Monitoring Contributor
+                "749f88d5-cbae-40b8-bcfc-e573ddc772fa"
+            ]
+        },
+        "logAnalyticsWorkspaceName": {
             "value": "la-aw"
         },
-        "logAnalyticsTableName":{
+        "logAnalyticsTableName": {
             "value": "AutomotiveTelemetry"
         },
-        "applicationInsightsName":{
+        "applicationInsightsName": {
             "value": "ai-aw"
         },
-        "storageAccountName":{
+        "storageAccountName": {
             "value": "storaw"
         },
-        "serverfarmName":{
+        "serverfarmName": {
             "value": "sf-aw"
         },
-        "functionAppName":{
+        "functionAppName": {
             "value": "sf-aw"
         }
     }
