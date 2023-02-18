@@ -68,7 +68,7 @@
                   "name": "StatusTypes",
                   "label": "Status",
                   "type": 2,
-                  "query": "AMICAR_CL \r\n| where type_s == \"Vehicle\"\r\n| extend VehicleId = entityId_s\r\n| extend Vehicle = parse_json(jsonAsString_s)\r\n| summarize arg_max(TimeGenerated, *) by entityId_s\r\n| distinct Status = tostring(Vehicle[\"status\"])\r\n",
+                  "query": "AW_CL \r\n| where type_s == \"Vehicle\"\r\n| extend VehicleId = entityId_s\r\n| extend Vehicle = parse_json(jsonAsString_s)\r\n| summarize arg_max(TimeGenerated, *) by entityId_s\r\n| distinct Status = tostring(Vehicle[\"status\"])\r\n",
                   "typeSettings": {
                     "additionalResourceOptions": [],
                     "showDefault": false
@@ -86,7 +86,7 @@
                   "name": "MakeTypes",
                   "label": "Make",
                   "type": 2,
-                  "query": "AMICAR_CL \r\n| where type_s == \"Vehicle\"\r\n| extend VehicleId = entityId_s\r\n| extend Vehicle = parse_json(jsonAsString_s)\r\n| distinct Make = tostring(Vehicle[\"make\"])",
+                  "query": "AW_CL \r\n| where type_s == \"Vehicle\"\r\n| extend VehicleId = entityId_s\r\n| extend Vehicle = parse_json(jsonAsString_s)\r\n| distinct Make = tostring(Vehicle[\"make\"])",
                   "typeSettings": {
                     "additionalResourceOptions": [],
                     "showDefault": false
@@ -104,7 +104,7 @@
                   "name": "EngineTypes",
                   "label": "EngineType",
                   "type": 2,
-                  "query": "AMICAR_CL \r\n| where type_s == \"Vehicle\"\r\n| extend VehicleId = entityId_s\r\n| extend Vehicle = parse_json(jsonAsString_s)\r\n| summarize arg_max(TimeGenerated, *) by entityId_s\r\n| distinct EngineType = tostring(Vehicle[\"parts\"][\"Engine\"][\"type\"])\r\n",
+                  "query": "AW_CL \r\n| where type_s == \"Vehicle\"\r\n| extend VehicleId = entityId_s\r\n| extend Vehicle = parse_json(jsonAsString_s)\r\n| summarize arg_max(TimeGenerated, *) by entityId_s\r\n| distinct EngineType = tostring(Vehicle[\"parts\"][\"Engine\"][\"type\"])\r\n",
                   "typeSettings": {
                     "additionalResourceOptions": [],
                     "showDefault": false
@@ -127,7 +127,7 @@
             "type": 3,
             "content": {
               "version": "KqlItem/1.0",
-              "query": "// Vehicle inventory\r\nAMICAR_CL \r\n| where type_s == \"Vehicle\"\r\n| extend VehicleId = entityId_s\r\n| extend Vehicle = parse_json(jsonAsString_s)\r\n| summarize arg_max(TimeGenerated, *) by VehicleId\r\n| extend Make = tostring(Vehicle[\"make\"])\r\n| where Make == '{MakeTypes}' or isempty('{MakeTypes}')\r\n| extend EngineType = tostring(Vehicle[\"parts\"][\"Engine\"][\"type\"])\r\n| where EngineType == '{EngineTypes}' or isempty('{EngineTypes}')\r\n| extend Status = tostring(Vehicle[\"status\"])\r\n| where Status == '{StatusTypes}' or isempty('{StatusTypes}')\r\n| project \r\n    VehicleId,\r\n    Status,\r\n    Make,\r\n    EngineType,\r\n    Model = tostring(Vehicle[\"model\"]),\r\n    SerialNumber = tostring(Vehicle[\"serialNumber\"]),\r\n    Year = tostring(Vehicle[\"year\"]),\r\n    Color = tostring(Vehicle[\"color\"]),\r\n    Kilometers = tostring(Vehicle[\"kilometers\"]),\r\n    VehicleType = tostring(Vehicle[\"vehicleType\"]),\r\n    IsAvailable = tostring(Vehicle[\"isAvailable\"]),\r\n    Battery = tostring(Vehicle[\"battery\"]),\r\n    Computer = tostring(Vehicle[\"parts\"][\"Computer\"]),\r\n    Engine = tostring(Vehicle[\"parts\"][\"Engine\"]),\r\n    Tires = tostring(Vehicle[\"parts\"][\"Tires\"])",
+              "query": "// Vehicle inventory\r\nAW_CL \r\n| where type_s == \"Vehicle\"\r\n| extend VehicleId = entityId_s\r\n| extend Vehicle = parse_json(jsonAsString_s)\r\n| summarize arg_max(TimeGenerated, *) by VehicleId\r\n| extend Make = tostring(Vehicle[\"make\"])\r\n| where Make == '{MakeTypes}' or isempty('{MakeTypes}')\r\n| extend EngineType = tostring(Vehicle[\"parts\"][\"Engine\"][\"type\"])\r\n| where EngineType == '{EngineTypes}' or isempty('{EngineTypes}')\r\n| extend Status = tostring(Vehicle[\"status\"])\r\n| where Status == '{StatusTypes}' or isempty('{StatusTypes}')\r\n| project \r\n    VehicleId,\r\n    Status,\r\n    Make,\r\n    EngineType,\r\n    Model = tostring(Vehicle[\"model\"]),\r\n    SerialNumber = tostring(Vehicle[\"serialNumber\"]),\r\n    Year = tostring(Vehicle[\"year\"]),\r\n    Color = tostring(Vehicle[\"color\"]),\r\n    Kilometers = tostring(Vehicle[\"kilometers\"]),\r\n    VehicleType = tostring(Vehicle[\"vehicleType\"]),\r\n    IsAvailable = tostring(Vehicle[\"isAvailable\"]),\r\n    Battery = tostring(Vehicle[\"battery\"]),\r\n    Computer = tostring(Vehicle[\"parts\"][\"Computer\"]),\r\n    Engine = tostring(Vehicle[\"parts\"][\"Engine\"]),\r\n    Tires = tostring(Vehicle[\"parts\"][\"Tires\"])",
               "size": 0,
               "timeContext": {
                 "durationMs": 604800000
@@ -187,7 +187,7 @@
             "type": 3,
             "content": {
               "version": "KqlItem/1.0",
-              "query": "AMICAR_CL \r\n| where type_s == \"Vehicle\"\r\n| extend VehicleId = entityId_s\r\n| extend Vehicle = parse_json(jsonAsString_s)\r\n| summarize arg_max(TimeGenerated, *) by VehicleId\r\n| extend Make = tostring(Vehicle[\"make\"])\r\n| where Make == '{Make}' or 'All' == '{Make}'\r\n| extend EngineType = tostring(Vehicle[\"parts\"][\"Engine\"][\"type\"])\r\n| summarize ['{Make}'] = count() by Make\r\n",
+              "query": "AW_CL \r\n| where type_s == \"Vehicle\"\r\n| extend VehicleId = entityId_s\r\n| extend Vehicle = parse_json(jsonAsString_s)\r\n| summarize arg_max(TimeGenerated, *) by VehicleId\r\n| extend Make = tostring(Vehicle[\"make\"])\r\n| where Make == '{Make}' or 'All' == '{Make}'\r\n| extend EngineType = tostring(Vehicle[\"parts\"][\"Engine\"][\"type\"])\r\n| summarize ['{Make}'] = count() by Make\r\n",
               "size": 0,
               "title": "Make",
               "timeContext": {
@@ -204,7 +204,7 @@
             "type": 3,
             "content": {
               "version": "KqlItem/1.0",
-              "query": "AMICAR_CL \r\n| where type_s == \"Vehicle\"\r\n| extend VehicleId = entityId_s\r\n| extend Vehicle = parse_json(jsonAsString_s)\r\n| summarize arg_max(TimeGenerated, *) by VehicleId\r\n| extend EngineType = tostring(Vehicle[\"parts\"][\"Engine\"][\"type\"])\r\n| where EngineType == '{EngineType}' or 'All' == '{EngineType}'\r\n| summarize ['{EngineType}'] = count() by EngineType\r\n",
+              "query": "AW_CL \r\n| where type_s == \"Vehicle\"\r\n| extend VehicleId = entityId_s\r\n| extend Vehicle = parse_json(jsonAsString_s)\r\n| summarize arg_max(TimeGenerated, *) by VehicleId\r\n| extend EngineType = tostring(Vehicle[\"parts\"][\"Engine\"][\"type\"])\r\n| where EngineType == '{EngineType}' or 'All' == '{EngineType}'\r\n| summarize ['{EngineType}'] = count() by EngineType\r\n",
               "size": 0,
               "title": "EngineType",
               "timeContext": {
@@ -243,7 +243,7 @@
                   "type": 3,
                   "content": {
                     "version": "KqlItem/1.0",
-                    "query": "AMICAR_CL \r\n| where type_s == \"Driver\"\r\n| extend DriverId = entityId_s\r\n| extend Driver = parse_json(jsonAsString_s)\r\n| summarize arg_max(TimeGenerated, *) by DriverId\r\n| project \r\n    DriverId,\r\n    Name = Driver[\"name\"],\r\n    Tachograph = Driver[\"tachograph\"],\r\n    RestTime = Driver[\"restTime\"],\r\n    HasAssignment = isnotempty(Driver[\"assignment\"])",
+                    "query": "AW_CL \r\n| where type_s == \"Driver\"\r\n| extend DriverId = entityId_s\r\n| extend Driver = parse_json(jsonAsString_s)\r\n| summarize arg_max(TimeGenerated, *) by DriverId\r\n| project \r\n    DriverId,\r\n    Name = Driver[\"name\"],\r\n    Tachograph = Driver[\"tachograph\"],\r\n    RestTime = Driver[\"restTime\"],\r\n    HasAssignment = isnotempty(Driver[\"assignment\"])",
                     "size": 0,
                     "timeContext": {
                       "durationMs": 604800000
@@ -282,7 +282,7 @@
                   "type": 3,
                   "content": {
                     "version": "KqlItem/1.0",
-                    "query": "// Tires by year\r\nAMICAR_CL \r\n| where type_s == \"Vehicle\"\r\n| extend VehicleId = entityId_s\r\n| extend Vehicle = parse_json(jsonAsString_s)\r\n| summarize arg_max(TimeGenerated, *) by VehicleId\r\n| extend Tires = todynamic(tostring(Vehicle[\"parts\"][\"Tires\"]))\r\n| mv-expand Tire = Tires\r\n| evaluate bag_unpack(Tire)\r\n| extend TireYear = coalesce(leftFront[\"year\"], leftRear[\"year\"], rightFront[\"year\"], rightRear[\"year\"], spare[\"year\"])\r\n| extend Faulty = coalesce(leftFront[\"isFaulty\"], leftRear[\"isFaulty\"], rightFront[\"isFaulty\"], rightRear[\"isFaulty\"], spare[\"isFaulty\"])\r\n| summarize count() by tostring(TireYear), tobool(Faulty)",
+                    "query": "// Tires by year\r\nAW_CL \r\n| where type_s == \"Vehicle\"\r\n| extend VehicleId = entityId_s\r\n| extend Vehicle = parse_json(jsonAsString_s)\r\n| summarize arg_max(TimeGenerated, *) by VehicleId\r\n| extend Tires = todynamic(tostring(Vehicle[\"parts\"][\"Tires\"]))\r\n| mv-expand Tire = Tires\r\n| evaluate bag_unpack(Tire)\r\n| extend TireYear = coalesce(leftFront[\"year\"], leftRear[\"year\"], rightFront[\"year\"], rightRear[\"year\"], spare[\"year\"])\r\n| extend Faulty = coalesce(leftFront[\"isFaulty\"], leftRear[\"isFaulty\"], rightFront[\"isFaulty\"], rightRear[\"isFaulty\"], spare[\"isFaulty\"])\r\n| summarize count() by tostring(TireYear), tobool(Faulty)",
                     "size": 0,
                     "title": "Tires by year",
                     "timeContext": {
@@ -318,7 +318,7 @@
             "type": 3,
             "content": {
               "version": "KqlItem/1.0",
-              "query": "AMICAR_CL\r\n| where type_s == \"Vehicle\"\r\n| extend VehicleId = entityId_s\r\n| extend Vehicle = parse_json(jsonAsString_s)\r\n| extend applications = Vehicle[\"parts\"][\"Multimedia\"][\"applications\"]\r\n| where isnotempty(applications)\r\n| mv-expand Application = applications\r\n| project Name = Application[\"name\"], Version = Application[\"version\"], Enabled = Application[\"enabled\"], vin_s\r\n| distinct tostring(Name), tostring(Version)\r\n\r\n",
+              "query": "AW_CL\r\n| where type_s == \"Vehicle\"\r\n| extend VehicleId = entityId_s\r\n| extend Vehicle = parse_json(jsonAsString_s)\r\n| extend applications = Vehicle[\"parts\"][\"Multimedia\"][\"applications\"]\r\n| where isnotempty(applications)\r\n| mv-expand Application = applications\r\n| project Name = Application[\"name\"], Version = Application[\"version\"], Enabled = Application[\"enabled\"]\r\n| distinct tostring(Name), tostring(Version)\r\n\r\n",
               "size": 4,
               "title": "Multimedia applications",
               "timeContext": {
@@ -355,7 +355,7 @@
                   "type": 3,
                   "content": {
                     "version": "KqlItem/1.0",
-                    "query": "AMICAR_CL \r\n| where type_s in (\"Vehicle\", \"Driver\")\r\n| summarize arg_max(TimeGenerated, *) by entityId_s\r\n| summarize count() by type_s",
+                    "query": "AW_CL \r\n| where type_s in (\"Vehicle\", \"Driver\")\r\n| summarize arg_max(TimeGenerated, *) by entityId_s\r\n| summarize count() by type_s",
                     "size": 0,
                     "timeContext": {
                       "durationMs": 604800000
@@ -392,7 +392,7 @@
                   "type": 3,
                   "content": {
                     "version": "KqlItem/1.0",
-                    "query": "AMICAR_CL \r\n| where type_s == \"Vehicle\"\r\n| extend VehicleId = entityId_s\r\n| extend Vehicle = parse_json(jsonAsString_s)\r\n| extend Location = tostring(Vehicle[\"location\"])\r\n| summarize arg_max(TimeGenerated, *) by VehicleId\r\n| where isnotempty(Location)\r\n| summarize count() by Location\r\n",
+                    "query": "AW_CL \r\n| where type_s == \"Vehicle\"\r\n| extend VehicleId = entityId_s\r\n| extend Vehicle = parse_json(jsonAsString_s)\r\n| extend Location = tostring(Vehicle[\"location\"])\r\n| summarize arg_max(TimeGenerated, *) by VehicleId\r\n| where isnotempty(Location)\r\n| summarize count() by Location\r\n",
                     "size": 0,
                     "timeContext": {
                       "durationMs": 604800000
@@ -435,7 +435,7 @@
     }
   ],
   "fallbackResourceIds": [
-    "/subscriptions/075423e9-7d33-4166-8bdf-3920b04e3735/resourcegroups/amhollan/providers/microsoft.operationalinsights/workspaces/la-ami"
+    "/subscriptions/81de6a21-8799-4bb5-a28c-cbc292f8e023/resourcegroups/automotive-world/providers/microsoft.operationalinsights/workspaces/la-aw"
   ],
   "fromTemplateId": "sentinel-UserWorkbook",
   "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json"

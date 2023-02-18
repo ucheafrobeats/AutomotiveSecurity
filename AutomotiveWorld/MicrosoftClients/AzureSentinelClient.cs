@@ -7,6 +7,8 @@ using Azure.ResourceManager.SecurityInsights.Models;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
+using System.Data;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace AutomotiveWorld.AzureClients
@@ -37,7 +39,6 @@ namespace AutomotiveWorld.AzureClients
             OperationalInsightsWorkspaceSecurityInsightsResource operationalInsightsWorkspaceSecurityInsightsResource = ArmClient.GetOperationalInsightsWorkspaceSecurityInsightsResource(ResourceIdentifier);
             SecurityInsightsAlertRuleCollection securityInsightsAlertRuleCollection = operationalInsightsWorkspaceSecurityInsightsResource.GetSecurityInsightsAlertRules();
 
-
             foreach (var (ruleId, rule) in DefaultRules)
             {
                 try
@@ -46,10 +47,12 @@ namespace AutomotiveWorld.AzureClients
                             waitUntil: WaitUntil.Completed,
                             ruleId: ruleId,
                             data: rule);
+
+                    Logger.LogInformation($"Applied Microsoft Sentinel Alert Rules, ruleId=[{ruleId}]");
                 }
                 catch (Exception ex)
                 {
-                    Logger.LogError($"Failed to create Microsoft Sentinel Rules, ruleId=[{ruleId}], error=[{ex.Message}]");
+                    Logger.LogError($"Failed to create Microsoft Sentinel Alert Rules, ruleId=[{ruleId}], error=[{ex.Message}], count=[{securityInsightsAlertRuleCollection?.Count()}]");
                     return false;
                 }
             }

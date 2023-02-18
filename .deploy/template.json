@@ -103,6 +103,12 @@
             "metadata": {
                 "description": "The kind of data connectors that can be deployed via ARM templates are the following: [\"AzureActivityLog\",\"SecurityInsightsSecurityEventCollectionConfiguration\",\"WindowsFirewall\",\"DnsAnalytics\"], Reference: https://docs.microsoft.com/azure/templates/microsoft.operationalinsights/2020-03-01-preview/workspaces/datasources#microsoftoperationalinsightsworkspacesdatasources-object"
             }
+        },
+        "sentinelWorkbookName": {
+            "type": "String",
+            "metadata": {
+                "description": "Microsoft Sentinel workbook name"
+            }
         }
     },
     "variables": {
@@ -164,44 +170,44 @@
                 "publicNetworkAccessForQuery": "Enabled"
             }
         },
-        {
-            "type": "Microsoft.OperationalInsights/workspaces/tables",
-            "apiVersion": "2021-12-01-preview",
-            "name": "[concat(parameters('logAnalyticsWorkspaceName'), '/', variables('logAnalyticsTableName'))]",
-            "dependsOn": [
-                "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('logAnalyticsWorkspaceName'))]"
-            ],
-            "properties": {
-                "totalRetentionInDays": 30,
-                "plan": "Analytics",
-                "schema": {
-                    "name": "[variables('logAnalyticsTableName')]",
-                    "columns": [
-                        {
-                            "name": "TimeGenerated",
-                            "type": "datetime"
-                        },
-                        {
-                            "name": "subType_s",
-                            "type": "string"
-                        },
-                        {
-                            "name": "type_s",
-                            "type": "string"
-                        },
-                        {
-                            "name": "entityId_s",
-                            "type": "string"
-                        },
-                        {
-                            "name": "jsonAsString_s",
-                            "type": "string"
-                        }
-                    ]
-                },
-                "retentionInDays": 30
-            }
-        },
+        // {
+        //     "type": "Microsoft.OperationalInsights/workspaces/tables",
+        //     "apiVersion": "2021-12-01-preview",
+        //     "name": "[concat(parameters('logAnalyticsWorkspaceName'), '/', variables('logAnalyticsTableName'))]",
+        //     "dependsOn": [
+        //         "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('logAnalyticsWorkspaceName'))]"
+        //     ],
+        //     "properties": {
+        //         "totalRetentionInDays": 30,
+        //         "plan": "Analytics",
+        //         "schema": {
+        //             "name": "[variables('logAnalyticsTableName')]",
+        //             "columns": [
+        //                 {
+        //                     "name": "TimeGenerated",
+        //                     "type": "datetime"
+        //                 },
+        //                 {
+        //                     "name": "subType_s",
+        //                     "type": "string"
+        //                 },
+        //                 {
+        //                     "name": "type_s",
+        //                     "type": "string"
+        //                 },
+        //                 {
+        //                     "name": "entityId_s",
+        //                     "type": "string"
+        //                 },
+        //                 {
+        //                     "name": "jsonAsString_s",
+        //                     "type": "string"
+        //                 }
+        //             ]
+        //         },
+        //         "retentionInDays": 30
+        //     }
+        // },
         {
             "comments": "Microsoft Sentinel",
             "type": "Microsoft.SecurityInsights/onboardingStates",
@@ -212,6 +218,23 @@
             ],
             "properties": {},
             "scope": "[concat('Microsoft.OperationalInsights/workspaces/', parameters('logAnalyticsWorkspaceName'))]"
+        },
+        {
+            "name": "[guid(uniqueString(subscription().subscriptionId, resourceGroup().id, parameters('sentinelWorkbookName')))]",
+            "type": "microsoft.insights/workbooks",
+            "location": "[resourceGroup().location]",
+            "apiVersion": "2021-03-08",
+            "dependsOn": [
+                "default"
+            ],
+            "kind": "shared",
+            "properties": {
+                "displayName": "[parameters('sentinelWorkbookName')]",
+                "serializedData": "{\"version\":\"Notebook/1.0\",\"items\":[{\"type\":11,\"content\":{\"version\":\"LinkItem/1.0\",\"style\":\"tabs\",\"links\":[{\"id\":\"4ea919be-c4af-4815-8c8f-9bf418d12f8e\",\"cellValue\":\"setTab\",\"linkTarget\":\"parameter\",\"linkLabel\":\"Overview\",\"subTarget\":\"Overview\",\"style\":\"link\"},{\"id\":\"ac85e0b9-f727-4547-967e-40fedbe27d88\",\"cellValue\":\"setTab\",\"linkTarget\":\"parameter\",\"linkLabel\":\"Drivers\",\"subTarget\":\"Drivers\",\"style\":\"link\"},{\"id\":\"7236fddd-9e8f-4f43-910d-a1812da7bd3e\",\"cellValue\":\"setTab\",\"linkTarget\":\"parameter\",\"linkLabel\":\"Vehicle Inventory\",\"subTarget\":\"Vehicles\",\"style\":\"link\"},{\"id\":\"7ef0ac4f-01d3-4839-86b4-80cbce5b5977\",\"cellValue\":\"setTab\",\"linkTarget\":\"parameter\",\"linkLabel\":\"Sbom\",\"subTarget\":\"Sbom\",\"style\":\"link\"},{\"id\":\"a5109791-292d-4ee0-abdc-29d32d7b65df\",\"cellValue\":\"setTab\",\"linkTarget\":\"parameter\",\"linkLabel\":\"Maintenance\",\"subTarget\":\"Maintenance\",\"style\":\"link\"}]},\"name\":\"links - 7\"},{\"type\":12,\"content\":{\"version\":\"NotebookGroup/1.0\",\"groupType\":\"editable\",\"items\":[{\"type\":9,\"content\":{\"version\":\"KqlParameterItem/1.0\",\"parameters\":[{\"id\":\"cee69759-5e35-4e51-9fcd-e5fa0f0d8b6b\",\"version\":\"KqlParameterItem/1.0\",\"name\":\"StatusTypes\",\"label\":\"Status\",\"type\":2,\"query\":\"AW_CL \\r\\n| where type_s == \\\"Vehicle\\\"\\r\\n| extend VehicleId = entityId_s\\r\\n| extend Vehicle = parse_json(jsonAsString_s)\\r\\n| summarize arg_max(TimeGenerated, *) by entityId_s\\r\\n| distinct Status = tostring(Vehicle[\\\"status\\\"])\\r\\n\",\"typeSettings\":{\"additionalResourceOptions\":[],\"showDefault\":false},\"timeContext\":{\"durationMs\":604800000},\"queryType\":0,\"resourceType\":\"microsoft.operationalinsights/workspaces\",\"value\":null},{\"id\":\"28c59d15-72b9-4d85-8559-d4a98a551870\",\"version\":\"KqlParameterItem/1.0\",\"name\":\"MakeTypes\",\"label\":\"Make\",\"type\":2,\"query\":\"AW_CL \\r\\n| where type_s == \\\"Vehicle\\\"\\r\\n| extend VehicleId = entityId_s\\r\\n| extend Vehicle = parse_json(jsonAsString_s)\\r\\n| distinct Make = tostring(Vehicle[\\\"make\\\"])\",\"typeSettings\":{\"additionalResourceOptions\":[],\"showDefault\":false},\"timeContext\":{\"durationMs\":604800000},\"queryType\":0,\"resourceType\":\"microsoft.operationalinsights/workspaces\",\"value\":null},{\"id\":\"ea562ecd-56a9-46ca-9831-a3f5b90e5f4b\",\"version\":\"KqlParameterItem/1.0\",\"name\":\"EngineTypes\",\"label\":\"EngineType\",\"type\":2,\"query\":\"AW_CL \\r\\n| where type_s == \\\"Vehicle\\\"\\r\\n| extend VehicleId = entityId_s\\r\\n| extend Vehicle = parse_json(jsonAsString_s)\\r\\n| summarize arg_max(TimeGenerated, *) by entityId_s\\r\\n| distinct EngineType = tostring(Vehicle[\\\"parts\\\"][\\\"Engine\\\"][\\\"type\\\"])\\r\\n\",\"typeSettings\":{\"additionalResourceOptions\":[],\"showDefault\":false},\"timeContext\":{\"durationMs\":604800000},\"queryType\":0,\"resourceType\":\"microsoft.operationalinsights/workspaces\",\"value\":null}],\"style\":\"pills\",\"queryType\":0,\"resourceType\":\"microsoft.operationalinsights/workspaces\"},\"name\":\"parameters - 6\"},{\"type\":3,\"content\":{\"version\":\"KqlItem/1.0\",\"query\":\"// Vehicle inventory\\r\\nAW_CL \\r\\n| where type_s == \\\"Vehicle\\\"\\r\\n| extend VehicleId = entityId_s\\r\\n| extend Vehicle = parse_json(jsonAsString_s)\\r\\n| summarize arg_max(TimeGenerated, *) by VehicleId\\r\\n| extend Make = tostring(Vehicle[\\\"make\\\"])\\r\\n| where Make == '{MakeTypes}' or isempty('{MakeTypes}')\\r\\n| extend EngineType = tostring(Vehicle[\\\"parts\\\"][\\\"Engine\\\"][\\\"type\\\"])\\r\\n| where EngineType == '{EngineTypes}' or isempty('{EngineTypes}')\\r\\n| extend Status = tostring(Vehicle[\\\"status\\\"])\\r\\n| where Status == '{StatusTypes}' or isempty('{StatusTypes}')\\r\\n| project \\r\\n    VehicleId,\\r\\n    Status,\\r\\n    Make,\\r\\n    EngineType,\\r\\n    Model = tostring(Vehicle[\\\"model\\\"]),\\r\\n    SerialNumber = tostring(Vehicle[\\\"serialNumber\\\"]),\\r\\n    Year = tostring(Vehicle[\\\"year\\\"]),\\r\\n    Color = tostring(Vehicle[\\\"color\\\"]),\\r\\n    Kilometers = tostring(Vehicle[\\\"kilometers\\\"]),\\r\\n    VehicleType = tostring(Vehicle[\\\"vehicleType\\\"]),\\r\\n    IsAvailable = tostring(Vehicle[\\\"isAvailable\\\"]),\\r\\n    Battery = tostring(Vehicle[\\\"battery\\\"]),\\r\\n    Computer = tostring(Vehicle[\\\"parts\\\"][\\\"Computer\\\"]),\\r\\n    Engine = tostring(Vehicle[\\\"parts\\\"][\\\"Engine\\\"]),\\r\\n    Tires = tostring(Vehicle[\\\"parts\\\"][\\\"Tires\\\"])\",\"size\":0,\"timeContext\":{\"durationMs\":604800000},\"exportedParameters\":[{\"fieldName\":\"Make\",\"parameterName\":\"Make\",\"parameterType\":1,\"defaultValue\":\"All\"},{\"fieldName\":\"EngineType\",\"parameterName\":\"EngineType\",\"parameterType\":1,\"defaultValue\":\"All\"}],\"queryType\":0,\"resourceType\":\"microsoft.operationalinsights/workspaces\",\"visualization\":\"table\",\"gridSettings\":{\"formatters\":[{\"columnMatch\":\"Status\",\"formatter\":18,\"formatOptions\":{\"thresholdsOptions\":\"icons\",\"thresholdsGrid\":[{\"operator\":\"contains\",\"thresholdValue\":\"Faulty\",\"representation\":\"3\",\"text\":\"{0}{1}\"},{\"operator\":\"contains\",\"thresholdValue\":\"Parking\",\"representation\":\"1\",\"text\":\"{0}{1}\"},{\"operator\":\"Default\",\"thresholdValue\":null,\"representation\":\"success\",\"text\":\"{0}{1}\"}]}}]}},\"name\":\"query - 2\"},{\"type\":3,\"content\":{\"version\":\"KqlItem/1.0\",\"query\":\"AW_CL \\r\\n| where type_s == \\\"Vehicle\\\"\\r\\n| extend VehicleId = entityId_s\\r\\n| extend Vehicle = parse_json(jsonAsString_s)\\r\\n| summarize arg_max(TimeGenerated, *) by VehicleId\\r\\n| extend Make = tostring(Vehicle[\\\"make\\\"])\\r\\n| where Make == '{Make}' or 'All' == '{Make}'\\r\\n| extend EngineType = tostring(Vehicle[\\\"parts\\\"][\\\"Engine\\\"][\\\"type\\\"])\\r\\n| summarize ['{Make}'] = count() by Make\\r\\n\",\"size\":0,\"title\":\"Make\",\"timeContext\":{\"durationMs\":604800000},\"queryType\":0,\"resourceType\":\"microsoft.operationalinsights/workspaces\",\"visualization\":\"piechart\"},\"customWidth\":\"50\",\"name\":\"query - 5\"},{\"type\":3,\"content\":{\"version\":\"KqlItem/1.0\",\"query\":\"AW_CL \\r\\n| where type_s == \\\"Vehicle\\\"\\r\\n| extend VehicleId = entityId_s\\r\\n| extend Vehicle = parse_json(jsonAsString_s)\\r\\n| summarize arg_max(TimeGenerated, *) by VehicleId\\r\\n| extend EngineType = tostring(Vehicle[\\\"parts\\\"][\\\"Engine\\\"][\\\"type\\\"])\\r\\n| where EngineType == '{EngineType}' or 'All' == '{EngineType}'\\r\\n| summarize ['{EngineType}'] = count() by EngineType\\r\\n\",\"size\":0,\"title\":\"EngineType\",\"timeContext\":{\"durationMs\":604800000},\"queryType\":0,\"resourceType\":\"microsoft.operationalinsights/workspaces\",\"visualization\":\"piechart\"},\"customWidth\":\"50\",\"name\":\"query - 5 - Copy\"}]},\"conditionalVisibility\":{\"parameterName\":\"setTab\",\"comparison\":\"isEqualTo\",\"value\":\"Vehicles\"},\"name\":\"VehiclesInventory\"},{\"type\":12,\"content\":{\"version\":\"NotebookGroup/1.0\",\"groupType\":\"editable\",\"items\":[{\"type\":12,\"content\":{\"version\":\"NotebookGroup/1.0\",\"groupType\":\"editable\",\"title\":\"Driver list\",\"items\":[{\"type\":3,\"content\":{\"version\":\"KqlItem/1.0\",\"query\":\"AW_CL \\r\\n| where type_s == \\\"Driver\\\"\\r\\n| extend DriverId = entityId_s\\r\\n| extend Driver = parse_json(jsonAsString_s)\\r\\n| summarize arg_max(TimeGenerated, *) by DriverId\\r\\n| project \\r\\n    DriverId,\\r\\n    Name = Driver[\\\"name\\\"],\\r\\n    Tachograph = Driver[\\\"tachograph\\\"],\\r\\n    RestTime = Driver[\\\"restTime\\\"],\\r\\n    HasAssignment = isnotempty(Driver[\\\"assignment\\\"])\",\"size\":0,\"timeContext\":{\"durationMs\":604800000},\"queryType\":0,\"resourceType\":\"microsoft.operationalinsights/workspaces\"},\"name\":\"query - 1\"}]},\"name\":\"group - 1\"}]},\"conditionalVisibility\":{\"parameterName\":\"setTab\",\"comparison\":\"isEqualTo\",\"value\":\"Drivers\"},\"name\":\"Drivers\"},{\"type\":12,\"content\":{\"version\":\"NotebookGroup/1.0\",\"groupType\":\"editable\",\"items\":[{\"type\":12,\"content\":{\"version\":\"NotebookGroup/1.0\",\"groupType\":\"editable\",\"items\":[{\"type\":3,\"content\":{\"version\":\"KqlItem/1.0\",\"query\":\"// Tires by year\\r\\nAW_CL \\r\\n| where type_s == \\\"Vehicle\\\"\\r\\n| extend VehicleId = entityId_s\\r\\n| extend Vehicle = parse_json(jsonAsString_s)\\r\\n| summarize arg_max(TimeGenerated, *) by VehicleId\\r\\n| extend Tires = todynamic(tostring(Vehicle[\\\"parts\\\"][\\\"Tires\\\"]))\\r\\n| mv-expand Tire = Tires\\r\\n| evaluate bag_unpack(Tire)\\r\\n| extend TireYear = coalesce(leftFront[\\\"year\\\"], leftRear[\\\"year\\\"], rightFront[\\\"year\\\"], rightRear[\\\"year\\\"], spare[\\\"year\\\"])\\r\\n| extend Faulty = coalesce(leftFront[\\\"isFaulty\\\"], leftRear[\\\"isFaulty\\\"], rightFront[\\\"isFaulty\\\"], rightRear[\\\"isFaulty\\\"], spare[\\\"isFaulty\\\"])\\r\\n| summarize count() by tostring(TireYear), tobool(Faulty)\",\"size\":0,\"title\":\"Tires by year\",\"timeContext\":{\"durationMs\":604800000},\"queryType\":0,\"resourceType\":\"microsoft.operationalinsights/workspaces\",\"visualization\":\"barchart\"},\"customWidth\":\"50\",\"name\":\"queyr\"}]},\"name\":\"Tires\"}]},\"conditionalVisibility\":{\"parameterName\":\"setTab\",\"comparison\":\"isEqualTo\",\"value\":\"Maintenance\"},\"name\":\"Maintenance\"},{\"type\":12,\"content\":{\"version\":\"NotebookGroup/1.0\",\"groupType\":\"editable\",\"items\":[{\"type\":3,\"content\":{\"version\":\"KqlItem/1.0\",\"query\":\"AW_CL\\r\\n| where type_s == \\\"Vehicle\\\"\\r\\n| extend VehicleId = entityId_s\\r\\n| extend Vehicle = parse_json(jsonAsString_s)\\r\\n| extend applications = Vehicle[\\\"parts\\\"][\\\"Multimedia\\\"][\\\"applications\\\"]\\r\\n| where isnotempty(applications)\\r\\n| mv-expand Application = applications\\r\\n| project Name = Application[\\\"name\\\"], Version = Application[\\\"version\\\"], Enabled = Application[\\\"enabled\\\"]\\r\\n| distinct tostring(Name), tostring(Version)\\r\\n\\r\\n\",\"size\":4,\"title\":\"Multimedia applications\",\"timeContext\":{\"durationMs\":604800000},\"queryType\":0,\"resourceType\":\"microsoft.operationalinsights/workspaces\"},\"customWidth\":\"50\",\"name\":\"query - 3\"}]},\"conditionalVisibility\":{\"parameterName\":\"setTab\",\"comparison\":\"isEqualTo\",\"value\":\"Sbom\"},\"name\":\"Sbom\"},{\"type\":12,\"content\":{\"version\":\"NotebookGroup/1.0\",\"groupType\":\"editable\",\"items\":[{\"type\":12,\"content\":{\"version\":\"NotebookGroup/1.0\",\"groupType\":\"editable\",\"items\":[{\"type\":3,\"content\":{\"version\":\"KqlItem/1.0\",\"query\":\"AW_CL \\r\\n| where type_s in (\\\"Vehicle\\\", \\\"Driver\\\")\\r\\n| summarize arg_max(TimeGenerated, *) by entityId_s\\r\\n| summarize count() by type_s\",\"size\":0,\"timeContext\":{\"durationMs\":604800000},\"queryType\":0,\"resourceType\":\"microsoft.operationalinsights/workspaces\",\"visualization\":\"barchart\",\"graphSettings\":{\"type\":0,\"topContent\":{\"columnMatch\":\"type_s\",\"formatter\":1},\"centerContent\":{\"columnMatch\":\"count_\",\"formatter\":1,\"numberFormat\":{\"unit\":17,\"options\":{\"maximumSignificantDigits\":3,\"maximumFractionDigits\":2}}}}},\"customWidth\":\"50\",\"name\":\"query - 3\",\"styleSettings\":{\"maxWidth\":\"100\"}},{\"type\":3,\"content\":{\"version\":\"KqlItem/1.0\",\"query\":\"AW_CL \\r\\n| where type_s == \\\"Vehicle\\\"\\r\\n| extend VehicleId = entityId_s\\r\\n| extend Vehicle = parse_json(jsonAsString_s)\\r\\n| extend Location = tostring(Vehicle[\\\"location\\\"])\\r\\n| summarize arg_max(TimeGenerated, *) by VehicleId\\r\\n| where isnotempty(Location)\\r\\n| summarize count() by Location\\r\\n\",\"size\":0,\"timeContext\":{\"durationMs\":604800000},\"queryType\":0,\"resourceType\":\"microsoft.operationalinsights/workspaces\",\"visualization\":\"map\",\"mapSettings\":{\"locInfo\":\"CountryRegion\",\"locInfoColumn\":\"Location\",\"latitude\":\"Location\",\"sizeSettings\":\"count_\",\"sizeAggregation\":\"Sum\",\"labelSettings\":\"Location\",\"legendMetric\":\"count_\",\"legendAggregation\":\"Sum\",\"itemColorSettings\":{\"nodeColorField\":\"count_\",\"colorAggregation\":\"Sum\",\"type\":\"heatmap\",\"heatmapPalette\":\"categorical\"}}},\"customWidth\":\"50\",\"name\":\"query - 4\"}]},\"name\":\"Overview\"}]},\"conditionalVisibility\":{\"parameterName\":\"setTab\",\"comparison\":\"isEqualTo\",\"value\":\"Overview\"},\"name\":\"Overview\"}],\"isLocked\":false,\"fallbackResourceIds\":[\"/subscriptions/81de6a21-8799-4bb5-a28c-cbc292f8e023/resourcegroups/automotive-world/providers/microsoft.operationalinsights/workspaces/la-aw\"],\"fromTemplateId\":\"sentinel-UserWorkbook\"}",
+                "version": "1.0",
+                "sourceId": "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('logAnalyticsWorkspaceName'))]",
+                "category": "sentinel"
+            }
         },
         {
             "comments": "Microsoft Defender for IoT connector",

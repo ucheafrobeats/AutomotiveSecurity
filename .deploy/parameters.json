@@ -8,14 +8,17 @@
         "userManagedIdentityRoleDefinitionIds": {
             "value": [
                 // Monitoring Contributor
-                "749f88d5-cbae-40b8-bcfc-e573ddc772fa"
+                "749f88d5-cbae-40b8-bcfc-e573ddc772fa",
+
+                // Microsoft Sentinel Contributor
+                "ab8e14d6-4a74-4a29-9ba8-549422addade"
             ]
         },
         "logAnalyticsWorkspaceName": {
             "value": "la-aw"
         },
         "logAnalyticsTableName": {
-            "value": "AutomotiveTelemetry"
+            "value": "AW"
         },
         "applicationInsightsName": {
             "value": "ai-aw"
@@ -28,6 +31,9 @@
         },
         "functionAppName": {
             "value": "sf-aw"
+        },
+        "sentinelWorkbookName": {
+            "value": "AutomotiveWorld"
         }
     }
 }
