@@ -7,12 +7,20 @@ using AutomotiveWorld.Models.Parts;
 using AutomotiveWorld.Models.Software;
 using AutomotiveWorld.Models.Telemetry;
 using AutomotiveWorld.Network;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Attributes;
+using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Enums;
 using Microsoft.Extensions.Logging;
+using Microsoft.OpenApi.Models;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -337,29 +345,48 @@ namespace AutomotiveWorld
         }
 
 
-        //    [FunctionName(nameof(Simulator.Run))]
-        //    [OpenApiOperation(operationId: nameof(Simulator.Run), tags: new[] { "name" })]
-        //    [OpenApiSecurity("function_key", SecuritySchemeType.ApiKey, Name = "code", In = OpenApiSecurityLocationType.Query)]
-        //    [OpenApiParameter(name: "name", In = ParameterLocation.Query, Required = true, Type = typeof(string), Description = "The **Name** parameter")]
-        //    [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "text/plain", bodyType: typeof(string), Description = "The OK response")]
-        //    public async Task<IActionResult> Run(
-        //       [HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)] HttpRequest req, ILogger log)
-        //    {
-        //        log.LogInformation("C# HTTP trigger function processed a request.");
+        [FunctionName(nameof(Simulator.Run))]
+        [OpenApiOperation(operationId: nameof(Simulator.Run), tags: new[] { "name" })]
+        [OpenApiSecurity("function_key", SecuritySchemeType.ApiKey, Name = "code", In = OpenApiSecurityLocationType.Query)]
+        [OpenApiParameter(name: "name", In = ParameterLocation.Query, Required = true, Type = typeof(string), Description = "The **Name** parameter")]
+        [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "text/plain", bodyType: typeof(string), Description = "The OK response")]
+        public async Task<IActionResult> Run(
+           [HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)] HttpRequest req, ILogger log)
+        {
+            log.LogInformation("C# HTTP trigger function processed a request.");
 
-        //        string name = req.Query["name"];
+            string name = req.Query["name"];
 
 
-        //        string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
-        //        dynamic data = JsonConvert.DeserializeObject(requestBody);
-        //        name = name ?? data?.name;
+            string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
+            dynamic data = JsonConvert.DeserializeObject(requestBody);
+            name = name ?? data?.name;
 
-        //        string responseMessage = string.IsNullOrEmpty(name)
-        //            ? "This HTTP triggered function executed successfully. Pass a name in the query string or in the request body for a personalized response."
-        //            : $"Hello, {name}. This HTTP triggered function executed successfully.";
+            string responseMessage = string.IsNullOrEmpty(name)
+                ? "This HTTP triggered function executed successfully. Pass a name in the query string or in the request body for a personalized response."
+                : $"Hello, {name}. This HTTP triggered function executed successfully.";
 
-        //        return new OkObjectResult(responseMessage);
-        //    }
-        //}
+            return new OkObjectResult(responseMessage);
+        }
+
+        [FunctionName(nameof(Simulator.UpgradeFirmware))]
+        [OpenApiOperation(operationId: nameof(Simulator.UpgradeFirmware), tags: new[] { "firmware" })]
+        [OpenApiParameter(name: "part", In = ParameterLocation.Query, Required = true, Type = typeof(string), Description = "The **Part** parameter")]
+        [OpenApiParameter(name: "vendor", In = ParameterLocation.Query, Required = true, Type = typeof(string), Description = "The **Vendor** parameter")]
+        [OpenApiParameter(name: "version", In = ParameterLocation.Query, Required = true, Type = typeof(string), Description = "The **Version** parameter")]
+        [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "text/plain", bodyType: typeof(string), Description = "The OK response")]
+        public async Task<IActionResult> UpgradeFirmware(
+   [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = null)] HttpRequest req, ILogger log)
+        {
+            log.LogInformation("C# HTTP trigger function processed a request.");
+
+            string part = req.Query["part"];
+            string vendor = req.Query["vendor"];
+            string version = req.Query["version"];
+
+            string responseMessage = $"Hello, {part}, {vendor}, {version}. This HTTP triggered function executed successfully.";
+
+            return new OkObjectResult(responseMessage);
+        }
     }
 }

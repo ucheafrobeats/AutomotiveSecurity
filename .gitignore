@@ -351,4 +351,6 @@ MigrationBackup/
 
 .env
 Properties/
-Properties
+__azurite_*
+__blobstorage__
+__queuestorage__
