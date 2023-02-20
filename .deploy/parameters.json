@@ -1,0 +1,45 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "userManagedIdentityName": {
+            "value": "umi-aw"
+        },
+        "userManagedIdentityRoleDefinitionIds": {
+            "value": [
+                // Monitoring Contributor
+                "749f88d5-cbae-40b8-bcfc-e573ddc772fa",
+
+                // Microsoft Sentinel Contributor
+                "ab8e14d6-4a74-4a29-9ba8-549422addade"
+            ]
+        },
+        "logAnalyticsWorkspaceName": {
+            "value": "la-aw"
+        },
+        "logAnalyticsTableName": {
+            "value": "AW"
+        },
+        "applicationInsightsName": {
+            "value": "ai-aw"
+        },
+        "storageAccountName": {
+            "value": "storaw"
+        },
+        "serverfarmName": {
+            "value": "sf-aw"
+        },
+        "functionAppName": {
+            "value": "sf-aw"
+        },
+        "sentinelWorkbookName": {
+            "value": "AutomotiveWorld"
+        },
+        "automationSimulatorLogicAppName": {
+            "value": "ala-aw-simulateevent"
+        },
+        "automationFirmwareLogicAppName": {
+            "value": "ala-aw-firmware"
+        }
+    }
+}

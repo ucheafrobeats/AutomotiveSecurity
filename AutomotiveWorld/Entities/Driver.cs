@@ -58,12 +58,12 @@ namespace AutomotiveWorld.Entities
             return Task.FromResult(_isAvailable);
         }
 
-        public Task Create(DriverDto driverDto)
+        public async Task Create(DriverDto driverDto)
         {
             Id = driverDto.Id;
             Name = driverDto.Name;
 
-            return Task.CompletedTask;
+            await SendTelemetry();
         }
 
         public Task<bool> Assign(Assignment assignment)

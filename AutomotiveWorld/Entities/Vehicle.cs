@@ -70,6 +70,9 @@ namespace AutomotiveWorld.Entities
         [JsonConverter(typeof(StringEnumConverter))]
         public VehicleStatus Status { get; set; } = VehicleStatus.Parking;
 
+        [JsonProperty("location")]
+        public string Location { get; set; }
+
         public Vehicle(
             ILogger<Vehicle> logger,
             AzureLogAnalyticsClient azureLogAnalyticsClient) : base(
@@ -111,7 +114,7 @@ namespace AutomotiveWorld.Entities
             await SendTelemetry();
         }
 
-        public Task Create(VehicleDto vehicleDto)
+        public async Task Create(VehicleDto vehicleDto)
         {
             Id = vehicleDto.Id;
             Parts.AddRange(vehicleDto.Parts);
@@ -126,8 +129,9 @@ namespace AutomotiveWorld.Entities
             TrimLevel = vehicleDto.TrimLevel;
             VehicleType = vehicleDto.VehicleType;
             Year = vehicleDto.Year;
+            Location = vehicleDto.Location;
 
-            return Task.CompletedTask;
+            await SendTelemetry();
         }
 
         public async Task<bool> Assign(Assignment assignment)

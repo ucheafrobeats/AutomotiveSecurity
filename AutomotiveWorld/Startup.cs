@@ -30,10 +30,13 @@ namespace AutomotiveWorld
             {
                 ILogger<MicrosoftSentinelClient> log = serviceProvider.GetService<ILogger<MicrosoftSentinelClient>>();
 
+                string userAssignedManagedIdentityClientId = Environment.GetEnvironmentVariable("USER_ASSIGNED_MANAGED_IDENTITY_CLIENT_ID", EnvironmentVariableTarget.Process) ?? null;
+
                 return new MicrosoftSentinelClient(
                     log,
                     workspaceResourceId: Environment.GetEnvironmentVariable("LOG_ANALYTICS_WORKSPACE_RESOURCE_ID", EnvironmentVariableTarget.Process),
-                    tableName: Environment.GetEnvironmentVariable("LOG_ANALYTICS_WORKSPACE_TABLE_NAME", EnvironmentVariableTarget.Process));
+                    tableName: Environment.GetEnvironmentVariable("LOG_ANALYTICS_WORKSPACE_TABLE_NAME", EnvironmentVariableTarget.Process),
+                    userAssignedManagedIdentityClientId: userAssignedManagedIdentityClientId);
             });
             builder.Services.AddSingleton<VinGenerator>();
             builder.Services.AddSingleton<EntitiesRepository>();

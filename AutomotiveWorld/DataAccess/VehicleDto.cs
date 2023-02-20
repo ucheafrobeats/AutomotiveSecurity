@@ -47,6 +47,9 @@ namespace AutomotiveWorld.DataAccess
         [JsonProperty("year", Required = Required.Always)]
         public int Year { get; set; }
 
+        [JsonProperty("location")]
+        public string Location { get; set; }
+
         public object this[VehiclePartType key]
         {
             get { return Parts.TryGetValue(key, out object value) ? value : null; }

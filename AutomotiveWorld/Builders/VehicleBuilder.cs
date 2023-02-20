@@ -33,6 +33,7 @@ namespace AutomotiveWorld.Builders
                 TrimLevel = vin.Trim,
                 VehicleType = vin.VehicleType,
                 Year = vin.ModelYear,
+                Location = LocationGenerator.Next()
             };
         }
 

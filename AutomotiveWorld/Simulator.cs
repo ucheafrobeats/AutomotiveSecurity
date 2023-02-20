@@ -5,11 +5,17 @@ using AutomotiveWorld.Entities;
 using AutomotiveWorld.Models;
 using AutomotiveWorld.Models.Parts;
 using AutomotiveWorld.Network;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Attributes;
 using Microsoft.Extensions.Logging;
+using Microsoft.OpenApi.Models;
 using System;
 using System.Collections.Generic;
+using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -33,8 +39,6 @@ namespace AutomotiveWorld
 
         private readonly VinGenerator VinGenerator;
 
-        public string InstanceId { get; private set; }
-
         public Simulator(
             ILogger<Simulator> log,
             AzureLogAnalyticsClient azureLogAnalyticsClient,
@@ -42,7 +46,6 @@ namespace AutomotiveWorld
             EntitiesRepository vehicleRepository,
             VinGenerator vinGenerator)
         {
-            InstanceId = nameof(FleetManagerOrchestrator);
             Logger = log;
             AzureLogAnalyticsClient = azureLogAnalyticsClient;
             MicrosoftSentinelClient = microsoftSentinelClient;
@@ -50,12 +53,14 @@ namespace AutomotiveWorld
             VinGenerator = vinGenerator;
         }
 
-        [FunctionName(nameof(OrchestratorTimer))]
-        public async Task OrchestratorTimer(
+        [FunctionName(nameof(SetupInventoryTimer))]
+        public async Task SetupInventoryTimer(
             [TimerTrigger(Simulator.TimerScheduleExpression, RunOnStartup = true)] TimerInfo timerInfo,
             [DurableClient] IDurableOrchestrationClient client)
         {
-            Logger.LogInformation($"{nameof(OrchestratorTimer)}, instanceId=[{InstanceId}] has started");
+            string instanceId = nameof(SetupInventoryOrchestrator);
+
+            Logger.LogInformation($"{nameof(SetupInventoryTimer)}, instanceId=[{instanceId}] has started");
 
             try
             {
@@ -65,7 +70,7 @@ namespace AutomotiveWorld
                 }
 
                 // Check if an instance with the specified ID already exists or an existing one stopped running(completed/failed/terminated).
-                var orchestratorInstance = await client.GetStatusAsync(InstanceId);
+                var orchestratorInstance = await client.GetStatusAsync(instanceId);
                 if (orchestratorInstance == null
                     || orchestratorInstance.RuntimeStatus == OrchestrationRuntimeStatus.Completed
                     || orchestratorInstance.RuntimeStatus == OrchestrationRuntimeStatus.Failed
@@ -73,39 +78,127 @@ namespace AutomotiveWorld
                 {
                     // Trigger singleton orchestrator function
                     _ = await client.StartNewAsync(
-                        orchestratorFunctionName: nameof(FleetManagerOrchestrator),
-                        instanceId: InstanceId);
+                        orchestratorFunctionName: nameof(SetupInventoryOrchestrator),
+                        instanceId: instanceId);
                 }
                 else
                 {
                     Logger.LogError($"{nameof(Simulator)} is not in a runnable state {orchestratorInstance?.RuntimeStatus}");
                 }
 
-                Logger.LogInformation($"{nameof(OrchestratorTimer)} finished successfully");
+                Logger.LogInformation($"{nameof(SetupInventoryTimer)} finished successfully");
             }
             catch (Exception ex)
             {
-                Logger.LogError($"Exception occurred in {nameof(OrchestratorTimer)} function, error=[{ex}]");
+                Logger.LogError($"Exception occurred in {nameof(SetupInventoryTimer)} function, error=[{ex}]");
                 throw;
             }
         }
 
-        //[FunctionName(nameof(Orchestrator))]
-        //public async Task Orchestrator(
-        //    [OrchestrationTrigger] IDurableOrchestrationContext context)
-        //{
-        //    await context.CallSubOrchestratorAsync(nameof(FleetManagerOrchestrator), "CompanyNameFleetManagerOrchestrator", "CompanyName");
-        //}
+        [FunctionName(nameof(Simulator.SimulateEventStarter))]
+        [OpenApiOperation(operationId: nameof(Simulator.SimulateEventStarter), tags: new[] { "simulate" })]
+        [OpenApiParameter(name: "simulatorEventType", In = ParameterLocation.Query, Required = true, Type = typeof(string), Description = "The **SimulatorEventType** parameter")]
+        [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "text/plain", bodyType: typeof(string), Description = "The OK response")]
+        public async Task<IActionResult> SimulateEventStarter(
+           [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = null)] HttpRequest req,
+           [DurableClient] IDurableOrchestrationClient durableOrchestrationClient,
+           [DurableClient] IDurableEntityClient durableEntityClient)
+        {
+            Logger.LogInformation($"{nameof(SimulateEventStarter)}, has started");
 
-        [FunctionName(nameof(FleetManagerOrchestrator))]
-        public async Task FleetManagerOrchestrator(
+            if (!Enum.TryParse(req.Query["simulatorEventType"], out SimulatorEventType simulateEventType))
+            {
+                return new BadRequestObjectResult("Invalid argument");
+            }
+
+            await SimulateEvent(durableOrchestrationClient, durableEntityClient, simulateEventType);
+
+            Logger.LogInformation($"{nameof(SimulateEventStarter)} finished successfully");
+
+            return new OkObjectResult("Simulate event started");
+        }
+
+        [FunctionName(nameof(Simulator.UpgradeFirmwareStarter))]
+        [OpenApiOperation(operationId: nameof(Simulator.UpgradeFirmwareStarter), tags: new[] { "firmware" })]
+        [OpenApiParameter(name: "part", In = ParameterLocation.Query, Required = true, Type = typeof(string), Description = "The **Part** parameter")]
+        [OpenApiParameter(name: "vendor", In = ParameterLocation.Query, Required = true, Type = typeof(string), Description = "The **Vendor** parameter")]
+        [OpenApiParameter(name: "version", In = ParameterLocation.Query, Required = true, Type = typeof(string), Description = "The **Version** parameter")]
+        [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "text/plain", bodyType: typeof(string), Description = "The OK response")]
+        public async Task<IActionResult> UpgradeFirmwareStarter(
+           [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = null)] HttpRequest req,
+           [DurableClient] IDurableOrchestrationClient client,
+           ILogger log)
+        {
+            Logger.LogInformation($"{nameof(UpgradeFirmwareStarter)}, has started");
+
+            string vendor = req.Query["vendor"];
+            double version = Convert.ToDouble(req.Query["version"]);
+
+            if (!Enum.TryParse(req.Query["part"], out VehiclePartType part) || string.IsNullOrEmpty(vendor) || version == 0)
+            {
+                return new BadRequestObjectResult("Invalid argument");
+            }
+
+            string instanceId = nameof(UpgradeFirmwareOrchestrator);
+
+            // Check if an instance with the specified ID already exists or an existing one stopped running(completed/failed/terminated).
+            var orchestratorInstance = await client.GetStatusAsync(instanceId);
+            if (orchestratorInstance == null
+                || orchestratorInstance.RuntimeStatus == OrchestrationRuntimeStatus.Completed
+                || orchestratorInstance.RuntimeStatus == OrchestrationRuntimeStatus.Failed
+                || orchestratorInstance.RuntimeStatus == OrchestrationRuntimeStatus.Terminated)
+            {
+                // Trigger singleton orchestrator function
+                _ = await client.StartNewAsync(
+                    orchestratorFunctionName: nameof(UpgradeFirmwareOrchestrator),
+                    instanceId: instanceId,
+                    input: (part, vendor, version));
+            }
+            else
+            {
+                Logger.LogError($"{nameof(Simulator)} is not in a runnable state {orchestratorInstance?.RuntimeStatus}");
+            }
+
+            Logger.LogInformation($"{nameof(UpgradeFirmwareStarter)} finished successfully");
+
+            return new OkObjectResult("Upgrade started");
+        }
+
+        [FunctionName(nameof(UpgradeFirmwareOrchestrator))]
+        public async Task UpgradeFirmwareOrchestrator(
             [OrchestrationTrigger] IDurableOrchestrationContext context)
         {
-            string companyName = context.GetInput<string>();
+            (VehiclePartType part, string vendor, double version) = context.GetInput<(VehiclePartType, string, double)>();
 
             if (!context.IsReplaying)
             {
-                Logger.LogInformation($"{nameof(FleetManagerOrchestrator)} has started");
+                Logger.LogInformation($"{nameof(UpgradeFirmwareOrchestrator)} has started");
+            }
+
+            try
+            {
+                // Simulate upgrade version
+                version += VersionGenerator.Next();
+
+                int updated = await context.CallActivityAsync<int>(nameof(ActivityUpgradeFirmware), (part, vendor, version));
+
+                Logger.LogInformation($"{nameof(UpgradeFirmwareOrchestrator)} finished successfully, updated=[{updated}]");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError($"Exception occurred in {nameof(UpgradeFirmwareOrchestrator)} function, error=[{ex}]");
+                throw;
+            }
+        }
+
+
+        [FunctionName(nameof(SetupInventoryOrchestrator))]
+        public async Task SetupInventoryOrchestrator(
+            [OrchestrationTrigger] IDurableOrchestrationContext context)
+        {
+            if (!context.IsReplaying)
+            {
+                Logger.LogInformation($"{nameof(SetupInventoryOrchestrator)} has started");
             }
 
             try
@@ -117,36 +210,28 @@ namespace AutomotiveWorld
                 };
                 await Task.WhenAll(tasks);
 
-                //Logger.LogDebug($"Calling {nameof(FleetManagerAssignSubOrchestrator)} function");
-                //await context.CallSubOrchestratorAsync(nameof(FleetManagerAssignSubOrchestrator), nameof(FleetManagerAssignSubOrchestrator), null);
-
-                Logger.LogInformation($"{nameof(FleetManagerOrchestrator)} finished successfully");
+                Logger.LogInformation($"{nameof(SetupInventoryOrchestrator)} finished successfully");
             }
             catch (Exception ex)
             {
-                Logger.LogError($"Exception occurred in {nameof(FleetManagerOrchestrator)} function, error=[{ex}]");
+                Logger.LogError($"Exception occurred in {nameof(SetupInventoryOrchestrator)} function, error=[{ex}]");
                 throw;
-            }
-            finally
-            {
-                //DateTime deadline = context.CurrentUtcDateTime.Add(TimeSpan.FromSeconds(30));
-                //await context.CreateTimer(deadline, CancellationToken.None);
-
-                //context.StartNewOrchestration(nameof(Simulator.FleetManagerOrchestrator), null, "CompanyNameFleetManagerOrchestrator");
             }
         }
 
-        [FunctionName(nameof(SimulateEventTrigger))]
-        public async Task SimulateEventTrigger(
-            [TimerTrigger("%SimulateEventTriggerScheduleExpression%", RunOnStartup = true)] TimerInfo timerInfo,
-            [DurableClient] IDurableOrchestrationClient durableOrchestrationClient,
-            [DurableClient] IDurableEntityClient durableEntityClient)
+        private async Task SimulateEvent(IDurableOrchestrationClient durableOrchestrationClient, IDurableEntityClient durableEntityClient, SimulatorEventType simulatorEventType = SimulatorEventType.Unknown)
         {
-            Array simulatorEventTypes = (SimulatorEventType[])Enum.GetValues(typeof(SimulatorEventType));
-
             Random Rand = new();
 
-            SimulatorEventType simulatorEventType = (SimulatorEventType)simulatorEventTypes.GetValue(Rand.Next(simulatorEventTypes.Length));
+            if (simulatorEventType == SimulatorEventType.Unknown)
+            {
+                Array simulatorEventTypes = (SimulatorEventType[])Enum.GetValues(typeof(SimulatorEventType));
+
+                simulatorEventType = (SimulatorEventType)simulatorEventTypes.GetValue(Rand.Next(simulatorEventTypes.Length));
+            }
+
+            Logger.LogInformation($"{nameof(SimulateEvent)} type=[{simulatorEventType}]");
+
             switch (simulatorEventType)
             {
                 case SimulatorEventType.AcquireDriver:
@@ -196,19 +281,15 @@ namespace AutomotiveWorld
                     }
                     break;
             }
+        }
 
-            for (int i = 0; i < 5; i++)
-            {
-                Assignment assignment = new()
-                {
-                    TotalKilometers = Rand.Next(Constants.Assignment.TotalKilometerMinValue, Constants.Assignment.TotalKilometerMaxValue),
-                    ScheduledTime = DateTime.UtcNow.AddMinutes(Constants.Assignment.ScheduledTimeOffsetInMinutes)
-                };
-
-                var instanceId = assignment.Id;
-
-                await durableOrchestrationClient.StartNewAsync(nameof(FleetManagerAssignOrchestrator), instanceId, assignment);
-            }
+        [FunctionName(nameof(SimulateEventTrigger))]
+        public async Task SimulateEventTrigger(
+            [TimerTrigger("%SimulateEventTriggerScheduleExpression%", RunOnStartup = true)] TimerInfo timerInfo,
+            [DurableClient] IDurableOrchestrationClient durableOrchestrationClient,
+            [DurableClient] IDurableEntityClient durableEntityClient)
+        {
+            await SimulateEvent(durableOrchestrationClient, durableEntityClient);
         }
 
         [FunctionName(nameof(FleetManagerAssignOrchestrator))]
@@ -254,7 +335,6 @@ namespace AutomotiveWorld
                 assignment.DriverDto = driverDto;
                 assignment.VehicleDto = vehicleDto;
 
-                // FIXME Assign must return bool to know if assignment is null TryAssign, and enqueue assignment otherwise
                 bool driverHasBeenAssigned = await driverProxy.Assign(assignment);
                 if (driverHasBeenAssigned)
                 {
@@ -320,14 +400,21 @@ namespace AutomotiveWorld
             return 0;
         }
 
+        [FunctionName(nameof(ActivityUpgradeFirmware))]
+        public async Task<int> ActivityUpgradeFirmware(
+            [ActivityTrigger] IDurableActivityContext context,
+            [DurableClient] IDurableEntityClient client)
+        {
+            (VehiclePartType part, string vendor, double version) = context.GetInput<(VehiclePartType, string, double)>();
+
+            return await EntitiesRepository.UpgradeFirmware(client, part, vendor, version, pageSize: 2);
+        }
 
         [FunctionName(nameof(ActivityGetAvailableVehicle))]
         public async Task<VehicleDto> ActivityGetAvailableVehicle(
             [ActivityTrigger] IDurableActivityContext context,
             [DurableClient] IDurableEntityClient client)
         {
-
-
             return await EntitiesRepository.GetFirst<Vehicle, VehicleDto>(client, EntitiesRepository.PredicateIsAvailable);
         }
 
@@ -338,31 +425,5 @@ namespace AutomotiveWorld
         {
             return await EntitiesRepository.GetFirst<Driver, DriverDto>(client, EntitiesRepository.PredicateIsAvailable);
         }
-
-
-        //    [FunctionName(nameof(Simulator.Run))]
-        //    [OpenApiOperation(operationId: nameof(Simulator.Run), tags: new[] { "name" })]
-        //    [OpenApiSecurity("function_key", SecuritySchemeType.ApiKey, Name = "code", In = OpenApiSecurityLocationType.Query)]
-        //    [OpenApiParameter(name: "name", In = ParameterLocation.Query, Required = true, Type = typeof(string), Description = "The **Name** parameter")]
-        //    [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "text/plain", bodyType: typeof(string), Description = "The OK response")]
-        //    public async Task<IActionResult> Run(
-        //       [HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)] HttpRequest req, ILogger log)
-        //    {
-        //        log.LogInformation("C# HTTP trigger function processed a request.");
-
-        //        string name = req.Query["name"];
-
-
-        //        string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
-        //        dynamic data = JsonConvert.DeserializeObject(requestBody);
-        //        name = name ?? data?.name;
-
-        //        string responseMessage = string.IsNullOrEmpty(name)
-        //            ? "This HTTP triggered function executed successfully. Pass a name in the query string or in the request body for a personalized response."
-        //            : $"Hello, {name}. This HTTP triggered function executed successfully.";
-
-        //        return new OkObjectResult(responseMessage);
-        //    }
-        //}
     }
 }
