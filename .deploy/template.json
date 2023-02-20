@@ -471,7 +471,7 @@
                         }
                     },
                     "actions": {
-                        "HTTP": {
+                        "Azure_Functions_HttpTrigger_firmware_upgrade": {
                             "runAfter": {
                                 "Initialize_Sbom_vendor_variable": [
                                     "Succeeded"
@@ -486,7 +486,7 @@
                             "type": "Http",
                             "inputs": {
                                 "method": "GET",
-                                "uri": "[concat('https://', variables('slotContentShareName'), '.azurewebsites.net/api/UpgradeFirmware?part=@{variables(''part'')}&vendor=@{variables(''vendor'')}&version=@{variables(''version'')}')]"
+                                "uri": "[concat('https://', variables('slotContentShareName'), '.azurewebsites.net/api/UpgradeFirmwareStarter?part=@{variables(''part'')}&vendor=@{variables(''vendor'')}&version=@{variables(''version'')}')]"
                             }
                         },
                         "Initialize_Sbom_vendor_variable": {
