@@ -114,7 +114,7 @@ namespace AutomotiveWorld.Entities
             await SendTelemetry();
         }
 
-        public Task Create(VehicleDto vehicleDto)
+        public async Task Create(VehicleDto vehicleDto)
         {
             Id = vehicleDto.Id;
             Parts.AddRange(vehicleDto.Parts);
@@ -131,7 +131,7 @@ namespace AutomotiveWorld.Entities
             Year = vehicleDto.Year;
             Location = vehicleDto.Location;
 
-            return Task.CompletedTask;
+            await SendTelemetry();
         }
 
         public async Task<bool> Assign(Assignment assignment)

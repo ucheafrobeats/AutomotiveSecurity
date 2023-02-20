@@ -95,16 +95,16 @@ namespace AutomotiveWorld
             }
         }
 
-        [FunctionName(nameof(Simulator.SimulateStarter))]
-        [OpenApiOperation(operationId: nameof(Simulator.SimulateStarter), tags: new[] { "simulate" })]
+        [FunctionName(nameof(Simulator.SimulateEventStarter))]
+        [OpenApiOperation(operationId: nameof(Simulator.SimulateEventStarter), tags: new[] { "simulate" })]
         [OpenApiParameter(name: "simulatorEventType", In = ParameterLocation.Query, Required = true, Type = typeof(string), Description = "The **SimulatorEventType** parameter")]
         [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "text/plain", bodyType: typeof(string), Description = "The OK response")]
-        public async Task<IActionResult> SimulateStarter(
+        public async Task<IActionResult> SimulateEventStarter(
            [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = null)] HttpRequest req,
            [DurableClient] IDurableOrchestrationClient durableOrchestrationClient,
            [DurableClient] IDurableEntityClient durableEntityClient)
         {
-            Logger.LogInformation($"{nameof(SimulateStarter)}, has started");
+            Logger.LogInformation($"{nameof(SimulateEventStarter)}, has started");
 
             if (!Enum.TryParse(req.Query["simulatorEventType"], out SimulatorEventType simulateEventType))
             {
@@ -113,7 +113,7 @@ namespace AutomotiveWorld
 
             await SimulateEvent(durableOrchestrationClient, durableEntityClient, simulateEventType);
 
-            Logger.LogInformation($"{nameof(SimulateStarter)} finished successfully");
+            Logger.LogInformation($"{nameof(SimulateEventStarter)} finished successfully");
 
             return new OkObjectResult("Simulate event started");
         }
@@ -229,6 +229,8 @@ namespace AutomotiveWorld
 
                 simulatorEventType = (SimulatorEventType)simulatorEventTypes.GetValue(Rand.Next(simulatorEventTypes.Length));
             }
+
+            Logger.LogInformation($"{nameof(SimulateEvent)} type=[{simulatorEventType}]");
 
             switch (simulatorEventType)
             {
