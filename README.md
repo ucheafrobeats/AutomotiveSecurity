@@ -1,6 +1,36 @@
 # Automotive World - Simulator
 
-##
+## Demo
+
+### Microsoft Sentinel Workbook
+
+**Overview**
+![Overview](resources/workbook-overview.png "Overview")
+
+**Drivers**
+![Drivers](resources/workbook-drivers.png "Drivers")
+
+**Vehicles**
+![Vehicles](resources/workbook-vehicles.png "Vehicles")
+
+**Sbom**
+![Sbom](resources/workbook-sbom.png "Sbom")
+
+**Maintenance**
+![Maintenance](resources/workbook-Maintenance.png "Maintenance")
+
+
+### Microsoft Sentinel
+**AlertRules**
+![AlertRules](resources/sentinel-alerts.png "AlertRules")
+
+**Incidents**
+![Incidents](resources/sentinel-incidents.png "Incidents")
+
+
+## Architecture
+![Architecture](resources/automotive-world.png "Architecture")
+
 
 
 ## Development Prerequisites
@@ -22,6 +52,8 @@
 ### Alert Rules
 Deployed while function startup, and updated via TimerTrigger
 
+
+
 ### Azure Workbook
 See `resources/AutomotiveWorldWorkbook.workbook`
 
@@ -36,5 +68,3 @@ az group create --location <location> --name <name> --tags owner=<value>
 # Deploy ARM Template
 az group deployment create --resource-group <name> --template-file .deploy/azuredeploy.json --parameters .deploy/parameters.json
 ```
-
-az deployment group create --resource-group automotive-world --template-file .deploy/azuredeploy.json --parameters .deploy/parameters.json
