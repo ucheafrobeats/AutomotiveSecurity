@@ -17,7 +17,7 @@
 ![Sbom](resources/workbook-sbom.png "Sbom")
 
 **Maintenance**
-![Maintenance](resources/workbook-Maintenance.png "Maintenance")
+![Maintenance](resources/workbook-maintenance.png "Maintenance")
 
 
 ### Microsoft Sentinel
