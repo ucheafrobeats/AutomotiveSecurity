@@ -95,6 +95,29 @@ namespace AutomotiveWorld
             }
         }
 
+        [FunctionName(nameof(Simulator.SimulateStarter))]
+        [OpenApiOperation(operationId: nameof(Simulator.SimulateStarter), tags: new[] { "simulate" })]
+        [OpenApiParameter(name: "simulatorEventType", In = ParameterLocation.Query, Required = true, Type = typeof(string), Description = "The **SimulatorEventType** parameter")]
+        [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "text/plain", bodyType: typeof(string), Description = "The OK response")]
+        public async Task<IActionResult> SimulateStarter(
+           [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = null)] HttpRequest req,
+           [DurableClient] IDurableOrchestrationClient durableOrchestrationClient,
+           [DurableClient] IDurableEntityClient durableEntityClient)
+        {
+            Logger.LogInformation($"{nameof(SimulateStarter)}, has started");
+
+            if (!Enum.TryParse(req.Query["simulatorEventType"], out SimulatorEventType simulateEventType))
+            {
+                return new BadRequestObjectResult("Invalid argument");
+            }
+
+            await SimulateEvent(durableOrchestrationClient, durableEntityClient, simulateEventType);
+
+            Logger.LogInformation($"{nameof(SimulateStarter)} finished successfully");
+
+            return new OkObjectResult("Simulate event started");
+        }
+
         [FunctionName(nameof(Simulator.UpgradeFirmwareStarter))]
         [OpenApiOperation(operationId: nameof(Simulator.UpgradeFirmwareStarter), tags: new[] { "firmware" })]
         [OpenApiParameter(name: "part", In = ParameterLocation.Query, Required = true, Type = typeof(string), Description = "The **Part** parameter")]
@@ -155,8 +178,7 @@ namespace AutomotiveWorld
             try
             {
                 // Simulate upgrade version
-                Random rand = new Random();
-                version += 0.1;
+                version += VersionGenerator.Next();
 
                 int updated = await context.CallActivityAsync<int>(nameof(ActivityUpgradeFirmware), (part, vendor, version));
 
@@ -188,9 +210,6 @@ namespace AutomotiveWorld
                 };
                 await Task.WhenAll(tasks);
 
-                //Logger.LogDebug($"Calling {nameof(FleetManagerAssignSubOrchestrator)} function");
-                //await context.CallSubOrchestratorAsync(nameof(FleetManagerAssignSubOrchestrator), nameof(FleetManagerAssignSubOrchestrator), null);
-
                 Logger.LogInformation($"{nameof(SetupInventoryOrchestrator)} finished successfully");
             }
             catch (Exception ex)
@@ -198,26 +217,19 @@ namespace AutomotiveWorld
                 Logger.LogError($"Exception occurred in {nameof(SetupInventoryOrchestrator)} function, error=[{ex}]");
                 throw;
             }
-            finally
-            {
-                //DateTime deadline = context.CurrentUtcDateTime.Add(TimeSpan.FromSeconds(30));
-                //await context.CreateTimer(deadline, CancellationToken.None);
-
-                //context.StartNewOrchestration(nameof(Simulator.FleetManagerOrchestrator), null, "CompanyNameFleetManagerOrchestrator");
-            }
         }
 
-        [FunctionName(nameof(SimulateEventTrigger))]
-        public async Task SimulateEventTrigger(
-            [TimerTrigger("%SimulateEventTriggerScheduleExpression%", RunOnStartup = true)] TimerInfo timerInfo,
-            [DurableClient] IDurableOrchestrationClient durableOrchestrationClient,
-            [DurableClient] IDurableEntityClient durableEntityClient)
+        private async Task SimulateEvent(IDurableOrchestrationClient durableOrchestrationClient, IDurableEntityClient durableEntityClient, SimulatorEventType simulatorEventType = SimulatorEventType.Unknown)
         {
-            Array simulatorEventTypes = (SimulatorEventType[])Enum.GetValues(typeof(SimulatorEventType));
-
             Random Rand = new();
 
-            SimulatorEventType simulatorEventType = (SimulatorEventType)simulatorEventTypes.GetValue(Rand.Next(simulatorEventTypes.Length));
+            if (simulatorEventType == SimulatorEventType.Unknown)
+            {
+                Array simulatorEventTypes = (SimulatorEventType[])Enum.GetValues(typeof(SimulatorEventType));
+
+                simulatorEventType = (SimulatorEventType)simulatorEventTypes.GetValue(Rand.Next(simulatorEventTypes.Length));
+            }
+
             switch (simulatorEventType)
             {
                 case SimulatorEventType.AcquireDriver:
@@ -267,6 +279,15 @@ namespace AutomotiveWorld
                     }
                     break;
             }
+        }
+
+        [FunctionName(nameof(SimulateEventTrigger))]
+        public async Task SimulateEventTrigger(
+            [TimerTrigger("%SimulateEventTriggerScheduleExpression%", RunOnStartup = true)] TimerInfo timerInfo,
+            [DurableClient] IDurableOrchestrationClient durableOrchestrationClient,
+            [DurableClient] IDurableEntityClient durableEntityClient)
+        {
+            await SimulateEvent(durableOrchestrationClient, durableEntityClient);
         }
 
         [FunctionName(nameof(FleetManagerAssignOrchestrator))]

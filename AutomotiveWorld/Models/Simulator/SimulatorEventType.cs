@@ -2,6 +2,7 @@
 {
     public enum SimulatorEventType
     {
+        Unknown,
         AcquireDriver,
         AcquireVehicle,
         AcquireElectricVehicle,
